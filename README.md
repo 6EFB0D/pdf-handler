@@ -29,11 +29,11 @@ pdf-handler/
 - **DIコンテナ**: Microsoft.Extensions.DependencyInjection
 - **MVVMツールキット**: CommunityToolkit.Mvvm
 - **PDFライブラリ**:
-  - **PdfSharp 6.1.1** (PDF操作・結合・分割) - MIT License（完全無償・商用利用可能）
+  - **PdfSharp 6.1.1** (PDF操作・結合・分割) - MIT License
   - **Docnet.Core 2.6.0** (PDF表示・サムネイル生成) - MIT License
   - System.Drawing.Common (画像処理)
 
-**注意:** v4.0.0でiText 7（AGPL）からPdfSharp（MIT）に移行し、完全無償化を実現しました。
+すべてMITライセンスのライブラリを使用しており、**完全無償・商用利用可能**です。
 
 ## 主要機能
 

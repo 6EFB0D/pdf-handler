@@ -1,5 +1,5 @@
 // PDFハンドラ (PDF Handler)
-// Copyright (c) 2024-2026 Goplan. All rights reserved.
+// Copyright (c) 2025-2026 Goplan. All rights reserved.
 // Licensed under the MIT License. See LICENSE file in the project root for full license information.
 
 using System;
@@ -47,7 +47,7 @@ namespace PdfHandler.UI.Views
                 VersionTextBlock.Text = $"バージョン {displayVersion}";
                 
                 // 著作権
-                CopyrightTextBlock.Text = "© 2024-2026 Goplan. All rights reserved.";
+                CopyrightTextBlock.Text = "© 2025-2026 Goplan. All rights reserved.";
             }
             catch (Exception ex)
             {
