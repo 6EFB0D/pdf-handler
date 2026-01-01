@@ -1,0 +1,124 @@
+name: Download Statistics Tracker
+
+on:
+  schedule:
+    # 毎日午前0時（JST = UTC+9）に実行 = UTC 15:00
+    - cron: '0 15 * * *'
+  workflow_dispatch: # 手動実行も可能
+
+permissions:
+  contents: write
+
+jobs:
+  track-downloads:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fetch download statistics
+        id: fetch-stats
+        run: |
+          # GitHub APIからリリース情報を取得
+          echo "📊 ダウンロード統計を取得中..."
+
+          # 全リリースの情報を取得
+          curl -s -H "Accept: application/vnd.github+json" \
+               -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+               "https://api.github.com/repos/${{ github.repository }}/releases" \
+               > releases.json
+
+          # 統計ディレクトリを作成
+          mkdir -p stats
+
+          # タイムスタンプ
+          TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          DATE=$(date -u +"%Y-%m-%d")
+
+          # JSON形式で統計を保存
+          cat > stats/downloads-${DATE}.json << EOF
+          {
+            "timestamp": "${TIMESTAMP}",
+            "date": "${DATE}",
+            "repository": "${{ github.repository }}",
+            "releases": []
+          }
+          EOF
+
+          # 各リリースのダウンロード数を集計
+          TOTAL_DOWNLOADS=0
+
+          # jqを使ってリリース情報を解析
+          jq -c '.[]' releases.json | while read -r release; do
+            TAG_NAME=$(echo "$release" | jq -r '.tag_name')
+            RELEASE_NAME=$(echo "$release" | jq -r '.name')
+            PUBLISHED_AT=$(echo "$release" | jq -r '.published_at')
+
+            # 各アセットのダウンロード数を集計
+            RELEASE_DOWNLOADS=0
+            echo "$release" | jq -c '.assets[]' | while read -r asset; do
+              ASSET_NAME=$(echo "$asset" | jq -r '.name')
+              DOWNLOAD_COUNT=$(echo "$asset" | jq -r '.download_count')
+              RELEASE_DOWNLOADS=$((RELEASE_DOWNLOADS + DOWNLOAD_COUNT))
+
+              echo "  - ${ASSET_NAME}: ${DOWNLOAD_COUNT} downloads"
+            done
+
+            echo "Release ${TAG_NAME}: ${RELEASE_DOWNLOADS} downloads"
+            TOTAL_DOWNLOADS=$((TOTAL_DOWNLOADS + RELEASE_DOWNLOADS))
+          done
+
+          echo "total_downloads=${TOTAL_DOWNLOADS}" >> $GITHUB_OUTPUT
+          echo ""
+          echo "✅ 合計ダウンロード数: ${TOTAL_DOWNLOADS}"
+
+          # 詳細な統計をJSONファイルに保存
+          jq '[.[] | {
+            tag_name: .tag_name,
+            name: .name,
+            published_at: .published_at,
+            total_downloads: ([.assets[].download_count] | add // 0),
+            assets: [.assets[] | {
+              name: .name,
+              size: .size,
+              download_count: .download_count,
+              created_at: .created_at
+            }]
+          }]' releases.json > stats/releases-summary-${DATE}.json
+
+          # 最新の統計ファイルとしてもコピー
+          cp stats/releases-summary-${DATE}.json stats/latest.json
+
+          rm releases.json
+
+      - name: Commit statistics
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+
+          git add stats/
+
+          if git diff --staged --quiet; then
+            echo "📝 変更なし - コミットをスキップ"
+          else
+            git commit -m "📊 Update download statistics - $(date -u +"%Y-%m-%d")"
+            git push
+            echo "✅ 統計データをコミットしました"
+          fi
+
+      - name: Summary
+        run: |
+          echo "## 📊 ダウンロード統計サマリー" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **日時**: $(date -u +"%Y-%m-%d %H:%M:%S UTC")" >> $GITHUB_STEP_SUMMARY
+          echo "- **合計ダウンロード数**: ${{ steps.fetch-stats.outputs.total_downloads }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ -f stats/latest.json ]; then
+            echo "### リリースごとのダウンロード数" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            jq -r '.[] | "- **\(.tag_name)** (\(.name)): \(.total_downloads) downloads"' stats/latest.json >> $GITHUB_STEP_SUMMARY
+          fi
