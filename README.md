@@ -66,10 +66,10 @@ pdf-handler/
 
 1. **最新リリースをダウンロード**
    - [Releases ページ](https://github.com/6EFB0D/pdf-handler/releases/latest)にアクセス
-   - 最新バージョンの「Assets」セクションから `PdfHandler.exe` をダウンロード
+   - 最新バージョンの「Assets」セクションから `PdfHandler-v4.0.0-win-x64.exe` をダウンロード
 
 2. **アプリケーションを起動**
-   - ダウンロードした `PdfHandler.exe` をダブルクリックして起動
+   - ダウンロードした `PdfHandler-v4.0.0-win-x64.exe` をダブルクリックして起動
    - インストール不要で即座に使用可能です
 
 3. **システム要件**
