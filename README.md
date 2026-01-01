@@ -1,2 +1,225 @@
-# pdfhundler
-ファイルサーバ上のPDFファイルを効率的に管理・編集するためのデスクトップアプリケーション
+# PDFハンドラ デスクトップアプリケーション
+
+ファイルサーバ上のPDFファイルを効率的に管理・編集するためのWPFデスクトップアプリケーション
+
+## プロジェクト構成
+
+```
+pdf-handler/
+├── PdfHandler.sln              # ソリューションファイル
+├── src/
+│   ├── PdfHandler.UI/          # WPF UIプロジェクト
+│   │   ├── Views/              # XAMLビュー
+│   │   ├── ViewModels/         # ViewModelクラス
+│   │   └── Converters/         # 値コンバーター
+│   ├── PdfHandler.Core/        # ビジネスロジック
+│   │   ├── Models/             # ドメインモデル
+│   │   └── Interfaces/         # サービスインターフェース
+│   └── PdfHandler.Infrastructure/  # インフラストラクチャ
+│       └── Services/           # サービス実装
+└── README.md
+```
+
+## 技術スタック
+
+- **開発言語**: C# 10
+- **フレームワーク**: .NET 8.0
+- **UI**: WPF (Windows Presentation Foundation)
+- **アーキテクチャ**: MVVM (Model-View-ViewModel)
+- **DIコンテナ**: Microsoft.Extensions.DependencyInjection
+- **MVVMツールキット**: CommunityToolkit.Mvvm
+- **PDFライブラリ**: 
+  - **PdfSharp 6.1.1** (PDF操作・結合・分割) - MIT License（完全無償・商用利用可能）
+  - **Docnet.Core 2.6.0** (PDF表示・サムネイル生成) - MIT License
+  - System.Drawing.Common (画像処理)
+
+**注意:** v4.0.0でiText 7（AGPL）からPdfSharp（MIT）に移行し、完全無償化を実現しました。
+
+## 主要機能
+
+### 1. PDFプレビュー＆ファイル名変更
+- フォルダ階層のツリー表示
+- PDFファイルのサムネイル/リスト表示
+- PDFプレビュー表示（ON/OFF切替可能）
+- ファイルロックを回避したファイル名変更
+
+### 2. PDF結合
+- 複数PDFファイルの結合
+- 結合順序の調整
+- 進捗表示
+
+### 3. PDF分割
+- ページ範囲指定分割
+- 1ページずつ分割
+- 等分割
+
+## ビルド方法
+
+### 前提条件
+- Visual Studio 2022以上
+- .NET 8.0 SDK以上
+
+### ビルド手順
+
+1. ソリューションを開く
+```bash
+cd pdf-handler
+start PdfHandler.sln
+```
+
+2. Visual Studioでビルド
+- メニューから「ビルド」→「ソリューションのビルド」を選択
+- またはCtrl+Shift+B
+
+3. コマンドラインからビルド
+```bash
+dotnet build PdfHandler.sln
+```
+
+## 実行方法
+
+### Visual Studioから実行
+1. スタートアッププロジェクトを `PdfHandler.UI` に設定
+2. F5キーで実行
+
+### コマンドラインから実行
+```bash
+cd src/PdfHandler.UI
+dotnet run
+```
+
+## アーキテクチャ概要
+
+### レイヤー構成
+
+```
+┌─────────────────────────────┐
+│  Presentation Layer (UI)    │  WPF Views + ViewModels
+├─────────────────────────────┤
+│  Application Layer (Core)   │  Business Logic + Interfaces
+├─────────────────────────────┤
+│  Infrastructure Layer       │  File I/O + PDF Operations
+└─────────────────────────────┘
+```
+
+### 主要クラス
+
+#### Core Layer
+- `PdfFileInfo`: PDFファイル情報モデル
+- `FolderNode`: フォルダツリーノードモデル
+- `IFileService`: ファイル操作サービスインターフェース
+- `IPdfService`: PDF操作サービスインターフェース
+- `IPdfMergeService`: PDF結合サービスインターフェース
+- `IPdfSplitService`: PDF分割サービスインターフェース
+
+#### Infrastructure Layer
+- `FileService`: ファイル操作の実装
+- `PdfService`: PDF基本操作の実装
+- `PdfMergeService`: PDF結合の実装
+- `PdfSplitService`: PDF分割の実装
+
+#### UI Layer
+- `MainWindowViewModel`: メインウィンドウのViewModel
+- `MainWindow`: メインウィンドウのView
+
+## 開発状況
+
+### 実装済み機能（v4.0.0）
+- ✅ プロジェクト構造の確立（3層アーキテクチャ）
+- ✅ 基本UI (3ペイン構成)
+- ✅ フォルダツリー表示
+- ✅ サムネイル/リスト表示切替
+- ✅ プレビューON/OFF切替
+- ✅ DIコンテナによる依存性注入
+- ✅ MVVMパターンの実装
+- ✅ PdfSharpによるPDF結合機能
+- ✅ PdfSharpによるPDF分割機能
+- ✅ Docnet.CoreによるPDFレンダリング（実際のPDF表示）
+- ✅ サムネイル生成（第1ページ）
+- ✅ ファイル名変更（F2キー、インライン編集）
+- ✅ ファイルロック回避（メモリストリーム方式）
+- ✅ お気に入りフォルダ管理
+- ✅ PDF結合・分割ダイアログUI
+
+### 実装予定機能
+- 🔲 ページ抽出・回転・削除機能
+- 🔲 注釈機能（ハイライト、テキストボックス、手書き）
+- 🔲 ドラッグ&ドロップ対応
+- 🔲 ファイル形式変換（PDF↔Word、Excel、画像）
+- 🔲 ページサムネイル一覧表示
+- 🔲 AI機能（文書要約、セマンティック検索）
+
+## ライセンス情報
+
+### 使用ライブラリ
+- **CommunityToolkit.Mvvm**: MIT License
+- **PdfSharp 6.1.1**: MIT License（完全無償・商用利用可能）
+- **Docnet.Core 2.6.0**: MIT License
+- **System.Drawing.Common**: MIT License
+
+## 注意事項
+
+### PDFライブラリについて
+- **PdfSharp 6.1.1**: PDF操作（結合、分割）に使用。MITライセンスのため商用利用も完全無償
+- **Docnet.Core 2.6.0**: PDFレンダリング・サムネイル生成に使用。Google PDFiumベース
+- **System.Drawing.Common**: 画像処理に使用
+
+### ファイルロック対策
+- PDFをメモリに読み込むことでファイルロックを回避
+- 大容量PDFの場合はメモリ使用量に注意
+
+## トラブルシューティング
+
+### ビルドエラーが発生する場合
+1. NuGetパッケージの復元を実行
+```bash
+dotnet restore
+```
+
+2. .NET SDKのバージョンを確認
+```bash
+dotnet --version
+```
+
+### 実行時エラーが発生する場合
+- フォルダへのアクセス権限を確認
+- PDFファイルが他のアプリケーションで開かれていないか確認
+
+## 今後の開発予定
+
+### Phase 1: 基本機能拡張（Month 1-3）
+- ページ抽出・回転・削除機能
+- 注釈機能（ハイライト、テキストボックス、手書き）
+- ドラッグ&ドロップ対応
+- ファイル形式変換（PDF↔Word、Excel、画像）
+- ページサムネイル一覧表示
+
+### Phase 2: AI基盤開発（Month 1-4、並行）
+- Claude API統合基盤
+- APIキー管理
+- エラーハンドリング
+- トークン数管理
+
+### Phase 3: 有償化対応（Month 3-6）
+- 決済システム統合
+- セキュリティ実装
+- ライセンス管理
+- ユーザー認証
+
+## 参考資料
+
+- [WPF公式ドキュメント](https://docs.microsoft.com/wpf/)
+- [CommunityToolkit.Mvvm](https://learn.microsoft.com/windows/communitytoolkit/mvvm/introduction)
+- [PdfSharp Documentation](https://www.pdfsharp.net/)
+- [Docnet.Core GitHub](https://github.com/GowenGit/docnet)
+- [PDFium](https://pdfium.googlesource.com/pdfium/)
+
+## 貢献
+
+プロジェクトへの貢献を歓迎します。Issue報告やPull Requestをお待ちしています。
+
+## 連絡先
+
+- プロジェクト管理者: PDFハンドラ開発チーム
+- バージョン: 4.0.0
+- 最終更新: 2025年1月1日
