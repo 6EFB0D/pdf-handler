@@ -28,12 +28,12 @@ pdf-handler/
 - **アーキテクチャ**: MVVM (Model-View-ViewModel)
 - **DIコンテナ**: Microsoft.Extensions.DependencyInjection
 - **MVVMツールキット**: CommunityToolkit.Mvvm
-- **PDFライブラリ**: 
-  - **PdfSharp 6.1.1** (PDF操作・結合・分割) - MIT License（完全無償・商用利用可能）
+- **PDFライブラリ**:
+  - **PdfSharp 6.1.1** (PDF操作・結合・分割) - MIT License
   - **Docnet.Core 2.6.0** (PDF表示・サムネイル生成) - MIT License
   - System.Drawing.Common (画像処理)
 
-**注意:** v4.0.0でiText 7（AGPL）からPdfSharp（MIT）に移行し、完全無償化を実現しました。
+すべてMITライセンスのライブラリを使用しており、**完全無償・商用利用可能**です。
 
 ## 主要機能
 
@@ -145,9 +145,7 @@ dotnet run
 - 🔲 ページ抽出・回転・削除機能
 - 🔲 注釈機能（ハイライト、テキストボックス、手書き）
 - 🔲 ドラッグ&ドロップ対応
-- 🔲 ファイル形式変換（PDF↔Word、Excel、画像）
 - 🔲 ページサムネイル一覧表示
-- 🔲 AI機能（文書要約、セマンティック検索）
 
 ## ライセンス情報
 
@@ -185,27 +183,6 @@ dotnet --version
 - フォルダへのアクセス権限を確認
 - PDFファイルが他のアプリケーションで開かれていないか確認
 
-## 今後の開発予定
-
-### Phase 1: 基本機能拡張（Month 1-3）
-- ページ抽出・回転・削除機能
-- 注釈機能（ハイライト、テキストボックス、手書き）
-- ドラッグ&ドロップ対応
-- ファイル形式変換（PDF↔Word、Excel、画像）
-- ページサムネイル一覧表示
-
-### Phase 2: AI基盤開発（Month 1-4、並行）
-- Claude API統合基盤
-- APIキー管理
-- エラーハンドリング
-- トークン数管理
-
-### Phase 3: 有償化対応（Month 3-6）
-- 決済システム統合
-- セキュリティ実装
-- ライセンス管理
-- ユーザー認証
-
 ## 参考資料
 
 - [WPF公式ドキュメント](https://docs.microsoft.com/wpf/)
@@ -218,8 +195,11 @@ dotnet --version
 
 プロジェクトへの貢献を歓迎します。Issue報告やPull Requestをお待ちしています。
 
-## 連絡先
+## サポート・お問い合わせ
 
-- プロジェクト管理者: PDFハンドラ開発チーム
-- バージョン: 4.0.0
-- 最終更新: 2025年1月1日
+バグ報告や機能要望は、[GitHub Issues](https://github.com/6EFB0D/pdf-handler/issues) にてお願いします。
+
+---
+
+**バージョン**: 4.0.0
+**最終更新**: 2026年1月1日

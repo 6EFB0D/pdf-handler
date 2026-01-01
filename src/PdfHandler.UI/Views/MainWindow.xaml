@@ -1,0 +1,324 @@
+<Window x:Class="PdfHandler.UI.Views.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        Title="PDFハンドラ" Height="700" Width="1200"
+        WindowStartupLocation="CenterScreen">
+    
+    <Window.Resources>
+        <!-- ボタンスタイル -->
+        <Style x:Key="ToolbarButtonStyle" TargetType="Button">
+            <Setter Property="Margin" Value="2"/>
+            <Setter Property="Padding" Value="8,4"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="BorderBrush" Value="#CCCCCC"/>
+        </Style>
+    </Window.Resources>
+    
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- メニューバー -->
+        <Menu Grid.Row="0">
+            <MenuItem Header="ファイル(_F)">
+                <MenuItem Header="フォルダを開く(_O)..." Command="{Binding OpenFolderCommand}"/>
+                <MenuItem Header="更新(_R)" Command="{Binding RefreshCommand}"/>
+                <Separator/>
+                <MenuItem Header="終了(_X)" Click="Exit_Click"/>
+            </MenuItem>
+            <MenuItem Header="編集(_E)">
+                <MenuItem Header="削除(_D)" Click="DeleteFiles_Click" InputGestureText="Delete"/>
+                <Separator/>
+                <MenuItem Header="すべて選択(_A)" InputGestureText="Ctrl+A"/>
+            </MenuItem>
+            <MenuItem Header="表示(_V)">
+                <MenuItem Header="サムネイルビュー(_T)" Command="{Binding ToggleViewCommand}" 
+                          IsChecked="{Binding IsThumbnailView}"/>
+                <MenuItem Header="リストビュー(_L)" Command="{Binding ToggleViewCommand}"
+                          IsChecked="{Binding IsThumbnailView, Converter={StaticResource InverseBoolConverter}}"/>
+                <Separator/>
+                <MenuItem Header="サムネイルサイズ(_Z)">
+                    <MenuItem Header="小(_S)" Command="{Binding SetThumbnailSizeCommand}" CommandParameter="Small"
+                              IsChecked="{Binding IsSmallThumbnail}"/>
+                    <MenuItem Header="中(_M)" Command="{Binding SetThumbnailSizeCommand}" CommandParameter="Medium"
+                              IsChecked="{Binding IsMediumThumbnail}"/>
+                    <MenuItem Header="大(_L)" Command="{Binding SetThumbnailSizeCommand}" CommandParameter="Large"
+                              IsChecked="{Binding IsLargeThumbnail}"/>
+                    <MenuItem Header="特大(_X)" Command="{Binding SetThumbnailSizeCommand}" CommandParameter="ExtraLarge"
+                              IsChecked="{Binding IsExtraLargeThumbnail}"/>
+                </MenuItem>
+                <Separator/>
+                <MenuItem Header="プレビュー表示(_P)" Command="{Binding TogglePreviewCommand}"
+                          IsChecked="{Binding IsPreviewVisible}"/>
+            </MenuItem>
+            <MenuItem Header="ツール(_T)">
+                <MenuItem Header="PDFを結合(_M)..." Click="MergePdfs_Click" InputGestureText="Ctrl+M"/>
+                <MenuItem Header="PDFを分割(_S)..." Command="{Binding SplitPdfCommand}"/>
+            </MenuItem>
+            <MenuItem Header="ヘルプ(_H)">
+                <MenuItem Header="取扱説明書(_M)" Click="ShowUserManual_Click" InputGestureText="F1"/>
+                <Separator/>
+                <MenuItem Header="バージョン情報(_A)" Click="About_Click"/>
+            </MenuItem>
+        </Menu>
+
+        <!-- ツールバー -->
+        <ToolBar Grid.Row="1" Height="40">
+            <Button Content="🔄 更新" Command="{Binding RefreshCommand}" Style="{StaticResource ToolbarButtonStyle}" ToolTip="ファイル一覧を更新"/>
+            <Button Content="📁 開く" Command="{Binding OpenFolderCommand}" Style="{StaticResource ToolbarButtonStyle}" ToolTip="フォルダを開く"/>
+            <Button Content="🗑️ 削除" Click="DeleteFiles_Click" Style="{StaticResource ToolbarButtonStyle}" ToolTip="選択したファイルを削除（複数選択可）"/>
+            <Separator/>
+            <Button Content="🔗 結合" Click="MergePdfs_Click" Style="{StaticResource ToolbarButtonStyle}" ToolTip="複数のPDFを結合（Ctrl+クリックで複数選択）"/>
+            <Button Content="✂️ 分割" Command="{Binding SplitPdfCommand}" Style="{StaticResource ToolbarButtonStyle}" ToolTip="PDFを分割"/>
+            <Separator/>
+            <Button Content="🖼️ サムネイル" Command="{Binding ToggleViewCommand}" Style="{StaticResource ToolbarButtonStyle}" ToolTip="サムネイル/リスト表示切替"/>
+            <Button Content="👁️ プレビュー" Command="{Binding TogglePreviewCommand}" Style="{StaticResource ToolbarButtonStyle}" ToolTip="プレビュー表示ON/OFF"/>
+            <Separator/>
+            <TextBlock Text="💡 F2キーでファイル名変更" VerticalAlignment="Center" Margin="10,0,0,0" Foreground="Gray" FontSize="11"/>
+        </ToolBar>
+
+        <!-- メインコンテンツエリア（3ペイン構成） -->
+        <Grid Grid.Row="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="250" MinWidth="150"/>
+                <ColumnDefinition Width="5"/>
+                <ColumnDefinition Width="400" MinWidth="300"/>
+                <ColumnDefinition Width="5"/>
+                <ColumnDefinition Width="*" MinWidth="200"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- 左ペイン: フォルダツリー＆お気に入り -->
+            <Border Grid.Column="0" BorderBrush="#CCCCCC" BorderThickness="1" Margin="5">
+                <TabControl>
+                    <!-- フォルダツリータブ -->
+                    <TabItem Header="📁 フォルダ">
+                        <TreeView x:Name="FolderTreeView"
+                                  SelectedItemChanged="TreeView_SelectedItemChanged">
+                            <TreeView.ItemTemplate>
+                                <HierarchicalDataTemplate ItemsSource="{Binding Children}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="📁 " FontSize="14"/>
+                                        <TextBlock Text="{Binding Name}" FontSize="12"/>
+                                    </StackPanel>
+                                </HierarchicalDataTemplate>
+                            </TreeView.ItemTemplate>
+                        </TreeView>
+                    </TabItem>
+                    
+                    <!-- お気に入りタブ -->
+                    <TabItem Header="⭐ お気に入り">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+                            
+                            <!-- お気に入り操作ボタン -->
+                            <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="5">
+                                <Button Content="➕ 追加" Command="{Binding AddFavoriteCommand}" 
+                                        Padding="5,2" Margin="0,0,5,0" 
+                                        ToolTip="現在のフォルダをお気に入りに追加"/>
+                            </StackPanel>
+                            
+                            <!-- お気に入りリスト -->
+                            <ListBox Grid.Row="1" ItemsSource="{Binding Favorites}" 
+                                     Margin="5,0,5,5">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid Margin="2">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            
+                                            <!-- お気に入り名（クリックで開く） -->
+                                            <Button Grid.Column="0" 
+                                                    Content="{Binding Name}"
+                                                    Command="{Binding DataContext.OpenFavoriteCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
+                                                    CommandParameter="{Binding}"
+                                                    HorizontalContentAlignment="Left"
+                                                    Background="Transparent"
+                                                    BorderThickness="0"
+                                                    Padding="5,2"
+                                                    ToolTip="{Binding Path}"/>
+                                            
+                                            <!-- 削除ボタン -->
+                                            <Button Grid.Column="1" 
+                                                    Content="❌"
+                                                    Command="{Binding DataContext.RemoveFavoriteCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
+                                                    CommandParameter="{Binding}"
+                                                    Background="Transparent"
+                                                    BorderThickness="0"
+                                                    Padding="2"
+                                                    ToolTip="削除"/>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                        </Grid>
+                    </TabItem>
+                </TabControl>
+            </Border>
+
+            <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Stretch" Background="#E0E0E0"/>
+
+            <!-- 中央ペイン: サムネイル/リスト -->
+            <Border Grid.Column="2" BorderBrush="#CCCCCC" BorderThickness="1" Margin="5,5,0,5">
+                <Grid>
+                    <!-- サムネイルビュー -->
+                    <ListView x:Name="ThumbnailListView"
+                              ItemsSource="{Binding PdfFiles}" 
+                              SelectedItem="{Binding SelectedPdfFile}"
+                              SelectionMode="Extended"
+                              KeyDown="FileListView_KeyDown"
+                              MouseDoubleClick="ThumbnailItem_DoubleClick"
+                              ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                              ScrollViewer.VerticalScrollBarVisibility="Auto"
+                              Visibility="{Binding IsThumbnailView, Converter={StaticResource BoolToVisibilityConverter}}">
+                        <ListView.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel Orientation="Horizontal"/>
+                            </ItemsPanelTemplate>
+                        </ListView.ItemsPanel>
+                        <ListView.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel Width="{Binding DataContext.ThumbnailWidth, RelativeSource={RelativeSource AncestorType=ListView}}" 
+                                            Margin="5">
+                                    <Border BorderBrush="#CCCCCC" BorderThickness="1" 
+                                            Height="{Binding DataContext.ThumbnailHeight, RelativeSource={RelativeSource AncestorType=ListView}}" 
+                                            Background="White">
+                                        <Image Source="{Binding ThumbnailData, Converter={StaticResource ByteArrayToImageConverter}}" 
+                                               Stretch="Uniform"/>
+                                    </Border>
+                                    
+                                    <!-- ファイル名（編集可能） -->
+                                    <Grid Margin="0,5,0,0">
+                                        <!-- 通常表示 -->
+                                        <TextBlock Text="{Binding FileName}" 
+                                                   TextWrapping="Wrap" 
+                                                   FontSize="12" 
+                                                   HorizontalAlignment="Center"
+                                                   Visibility="{Binding IsEditing, Converter={StaticResource InverseBoolToVisibilityConverter}}"/>
+                                        
+                                        <!-- 編集モード -->
+                                        <TextBox Text="{Binding EditingName, UpdateSourceTrigger=PropertyChanged}"
+                                                 FontSize="12"
+                                                 HorizontalAlignment="Stretch"
+                                                 Visibility="{Binding IsEditing, Converter={StaticResource BoolToVisibilityConverter}}"
+                                                 LostFocus="FileNameEdit_LostFocus"
+                                                 KeyDown="FileNameEdit_KeyDown"
+                                                 Loaded="FileNameEdit_Loaded"/>
+                                    </Grid>
+                                    
+                                    <TextBlock Text="{Binding FormattedFileSize}" 
+                                               FontSize="11" 
+                                               Foreground="Gray"
+                                               HorizontalAlignment="Center"/>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ListView.ItemTemplate>
+                    </ListView>
+
+                    <!-- リストビュー -->
+                    <ListView x:Name="FileListView"
+                              ItemsSource="{Binding PdfFiles}"
+                              SelectedItem="{Binding SelectedPdfFile}"
+                              SelectionMode="Extended"
+                              KeyDown="FileListView_KeyDown"
+                              Visibility="{Binding IsThumbnailView, Converter={StaticResource InverseBoolToVisibilityConverter}}">
+                        <ListView.View>
+                            <GridView>
+                                <GridViewColumn Header="ファイル名" Width="250">
+                                    <GridViewColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <Grid>
+                                                <!-- 通常表示 -->
+                                                <TextBlock Text="{Binding FileName}" 
+                                                           Visibility="{Binding IsEditing, Converter={StaticResource InverseBoolToVisibilityConverter}}"
+                                                           MouseLeftButtonDown="FileName_DoubleClick"/>
+                                                
+                                                <!-- 編集モード -->
+                                                <TextBox Text="{Binding EditingName, UpdateSourceTrigger=PropertyChanged}"
+                                                         Visibility="{Binding IsEditing, Converter={StaticResource BoolToVisibilityConverter}}"
+                                                         LostFocus="FileNameEdit_LostFocus"
+                                                         KeyDown="FileNameEdit_KeyDown"
+                                                         Loaded="FileNameEdit_Loaded"/>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </GridViewColumn.CellTemplate>
+                                </GridViewColumn>
+                                <GridViewColumn Header="サイズ" Width="100" DisplayMemberBinding="{Binding FormattedFileSize}"/>
+                                <GridViewColumn Header="更新日時" Width="150" DisplayMemberBinding="{Binding LastModified, StringFormat=yyyy/MM/dd HH:mm}"/>
+                                <GridViewColumn Header="ページ数" Width="80" DisplayMemberBinding="{Binding PageCount}"/>
+                            </GridView>
+                        </ListView.View>
+                    </ListView>
+                </Grid>
+            </Border>
+
+            <GridSplitter Grid.Column="3" Width="5" HorizontalAlignment="Stretch" Background="#E0E0E0"/>
+
+            <!-- 右ペイン: プレビュー -->
+            <Border Grid.Column="4" 
+                    BorderBrush="#CCCCCC" 
+                    BorderThickness="1" 
+                    Margin="0,5,5,5"
+                    Visibility="{Binding IsPreviewVisible, Converter={StaticResource BoolToVisibilityConverter}}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- プレビューツールバー -->
+                    <StackPanel Grid.Row="0" Orientation="Horizontal" Background="#F0F0F0" Height="35">
+                        <Button Content="🔍-" Margin="5" Padding="5" Command="{Binding ZoomOutCommand}"/>
+                        <TextBlock Text="{Binding ZoomPercent, StringFormat={}{0}%}" VerticalAlignment="Center" Margin="5" MinWidth="40"/>
+                        <Button Content="🔍+" Margin="5" Padding="5" Command="{Binding ZoomInCommand}"/>
+                        <Separator/>
+                        <Button Content="◀️" Margin="5" Padding="5" Command="{Binding PreviousPageCommand}"/>
+                        <TextBlock VerticalAlignment="Center" Margin="5" MinWidth="50">
+                            <Run Text="{Binding CurrentPageNumber}"/><Run Text="/"/><Run Text="{Binding TotalPages}"/>
+                        </TextBlock>
+                        <Button Content="▶️" Margin="5" Padding="5" Command="{Binding NextPageCommand}"/>
+                    </StackPanel>
+
+                    <!-- プレビュー表示エリア -->
+                    <Border Grid.Row="1" Background="White">
+                        <ScrollViewer x:Name="PreviewScrollViewer" 
+                                      HorizontalScrollBarVisibility="Auto" 
+                                      VerticalScrollBarVisibility="Auto">
+                            <Image x:Name="PreviewImage" 
+                                   Source="{Binding PreviewImageData, Converter={StaticResource ByteArrayToImageConverter}}"
+                                   Stretch="None"
+                                   RenderOptions.BitmapScalingMode="HighQuality"/>
+                        </ScrollViewer>
+                    </Border>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <!-- ステータスバー -->
+        <StatusBar Grid.Row="3" Height="25" Background="#F0F0F0">
+            <StatusBarItem>
+                <TextBlock Text="{Binding StatusText}"/>
+            </StatusBarItem>
+            <Separator/>
+            <StatusBarItem>
+                <TextBlock Text="{Binding PdfFiles.Count, StringFormat='{}{0}項目'}"/>
+            </StatusBarItem>
+            <Separator/>
+            <StatusBarItem>
+                <TextBlock Text="{Binding IsPreviewVisible, StringFormat='プレビュー: {0}'}"/>
+            </StatusBarItem>
+        </StatusBar>
+    </Grid>
+</Window>

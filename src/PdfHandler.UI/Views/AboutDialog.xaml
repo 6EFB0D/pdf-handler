@@ -1,0 +1,225 @@
+<Window x:Class="PdfHandler.UI.Views.AboutDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="バージョン情報" 
+        Height="650" 
+        Width="550"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize"
+        Background="#F5F5F5">
+    
+    <Grid Margin="0">
+        <!-- メインコンテンツ -->
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+            <StackPanel Margin="30,20,30,20">
+                
+                <!-- ヘッダー -->
+                <StackPanel HorizontalAlignment="Center" Margin="0,10,0,20">
+                    <TextBlock Text="📄 PDFハンドラ" 
+                               FontSize="32" 
+                               FontWeight="Bold"
+                               HorizontalAlignment="Center"
+                               Foreground="#333333"/>
+                    
+                    <!-- バージョン情報 -->
+                    <TextBlock x:Name="VersionTextBlock"
+                               Text="バージョン 4.0.0" 
+                               FontSize="20" 
+                               HorizontalAlignment="Center"
+                               Margin="0,10,0,5"
+                               Foreground="#555555"/>
+                    
+                    <!-- 更新ステータス -->
+                    <TextBlock x:Name="UpdateStatusTextBlock"
+                               Text="✅ 最新版です" 
+                               FontSize="14" 
+                               HorizontalAlignment="Center"
+                               Margin="0,5,0,0"
+                               Foreground="#28A745"/>
+                    
+                    <!-- アップデートボタン（更新がある場合のみ表示） -->
+                    <Button x:Name="UpdateButton"
+                            Content="🆕 今すぐアップデート"
+                            Visibility="Collapsed"
+                            Click="UpdateButton_Click"
+                            Margin="0,10,0,0"
+                            Padding="20,8"
+                            FontSize="14"
+                            Background="#007BFF"
+                            Foreground="White"
+                            BorderThickness="0"
+                            Cursor="Hand">
+                        <Button.Style>
+                            <Style TargetType="Button">
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="Button">
+                                            <Border Background="{TemplateBinding Background}"
+                                                    CornerRadius="5"
+                                                    Padding="{TemplateBinding Padding}">
+                                                <ContentPresenter HorizontalAlignment="Center" 
+                                                                  VerticalAlignment="Center"/>
+                                            </Border>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                                <Style.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter Property="Background" Value="#0056B3"/>
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                    </Button>
+                </StackPanel>
+                
+                <!-- 説明 -->
+                <TextBlock Text="ファイルサーバー上のPDFファイルを" 
+                           FontSize="14" 
+                           HorizontalAlignment="Center"
+                           Foreground="#666666"/>
+                <TextBlock Text="効率的に管理・編集するアプリケーション" 
+                           FontSize="14" 
+                           HorizontalAlignment="Center"
+                           Margin="0,0,0,20"
+                           Foreground="#666666"/>
+                
+                <!-- 区切り線 -->
+                <Separator Margin="0,10,0,15" Background="#DDDDDD"/>
+                
+                <!-- 主な機能 -->
+                <TextBlock Text="💡 主な機能" 
+                           FontSize="16" 
+                           FontWeight="SemiBold"
+                           Margin="0,0,0,10"
+                           Foreground="#333333"/>
+                
+                <StackPanel Margin="15,0,0,0">
+                    <TextBlock Text="• PDFプレビュー＆ファイル名変更" 
+                               FontSize="13" 
+                               Margin="0,3"
+                               Foreground="#555555"/>
+                    <TextBlock Text="• 複数PDFファイルの結合" 
+                               FontSize="13" 
+                               Margin="0,3"
+                               Foreground="#555555"/>
+                    <TextBlock Text="• PDFファイルの分割" 
+                               FontSize="13" 
+                               Margin="0,3,0,15"
+                               Foreground="#555555"/>
+                </StackPanel>
+                
+                <!-- 区切り線 -->
+                <Separator Margin="0,10,0,15" Background="#DDDDDD"/>
+                
+                <!-- ヘルプとサポート -->
+                <TextBlock Text="📚 ヘルプとサポート" 
+                           FontSize="16" 
+                           FontWeight="SemiBold"
+                           Margin="0,0,0,10"
+                           Foreground="#333333"/>
+                
+                <Grid Margin="0,0,0,15">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    
+                    <Button Grid.Row="0" Grid.Column="0" 
+                            Content="📖 取扱説明書"
+                            Click="UserManual_Click"
+                            Margin="0,0,5,5"
+                            Padding="10,8"
+                            Background="White"
+                            BorderBrush="#CCCCCC"
+                            Cursor="Hand"/>
+                    
+                    <Button Grid.Row="0" Grid.Column="1" 
+                            Content="❓ よくある質問"
+                            Click="FAQ_Click"
+                            Margin="5,0,0,5"
+                            Padding="10,8"
+                            Background="White"
+                            BorderBrush="#CCCCCC"
+                            Cursor="Hand"/>
+                    
+                    <Button Grid.Row="1" Grid.Column="0" 
+                            Content="🐛 問題を報告"
+                            Click="ReportIssue_Click"
+                            Margin="0,5,5,0"
+                            Padding="10,8"
+                            Background="White"
+                            BorderBrush="#CCCCCC"
+                            Cursor="Hand"/>
+                    
+                    <Button Grid.Row="1" Grid.Column="1" 
+                            Content="💬 ご意見・ご要望"
+                            Click="Discussions_Click"
+                            Margin="5,5,0,0"
+                            Padding="10,8"
+                            Background="White"
+                            BorderBrush="#CCCCCC"
+                            Cursor="Hand"/>
+                </Grid>
+                
+                <!-- 区切り線 -->
+                <Separator Margin="0,10,0,15" Background="#DDDDDD"/>
+                
+                <!-- 著作権 -->
+                <TextBlock x:Name="CopyrightTextBlock"
+                           Text="© 2025 Goplan. All rights reserved." 
+                           FontSize="12" 
+                           HorizontalAlignment="Center"
+                           Margin="0,0,0,20"
+                           Foreground="#888888"/>
+                
+                <!-- ボタン -->
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    
+                    <Button Grid.Column="0" 
+                            Content="更新を確認"
+                            Click="CheckUpdate_Click"
+                            Margin="0,0,5,0"
+                            Padding="10,10"
+                            Background="White"
+                            BorderBrush="#CCCCCC"/>
+                    
+                    <Button Grid.Column="1" 
+                            Content="ライセンス"
+                            Click="License_Click"
+                            Margin="5,0,5,0"
+                            Padding="10,10"
+                            Background="White"
+                            BorderBrush="#CCCCCC"/>
+                    
+                    <Button Grid.Column="2" 
+                            Content="詳細情報"
+                            Click="DetailedInfo_Click"
+                            Margin="5,0,5,0"
+                            Padding="10,10"
+                            Background="White"
+                            BorderBrush="#CCCCCC"/>
+                    
+                    <Button Grid.Column="3" 
+                            Content="閉じる"
+                            Click="CloseButton_Click"
+                            Margin="5,0,0,0"
+                            Padding="10,10"
+                            Background="#6C757D"
+                            Foreground="White"
+                            BorderThickness="0"/>
+                </Grid>
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</Window>

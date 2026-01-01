@@ -1,0 +1,136 @@
+<Window x:Class="PdfHandler.UI.Views.SplitPdfDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="PDFファイルの分割"
+        Width="550"
+        Height="550"
+        WindowStartupLocation="CenterOwner"
+        Background="#F5F5F5">
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- 対象ファイル -->
+        <StackPanel Grid.Row="0" Margin="0,0,0,15">
+            <TextBlock Text="対象ファイル:" FontWeight="Bold" Margin="0,0,0,5"/>
+            <TextBlock x:Name="TargetFileText" TextWrapping="Wrap"/>
+            <TextBlock x:Name="PageCountText" Margin="0,5,0,0" Foreground="Gray"/>
+        </StackPanel>
+
+        <!-- 分割方法 -->
+        <TextBlock Grid.Row="1" 
+                   Text="分割方法:" 
+                   FontWeight="Bold" 
+                   Margin="0,0,0,10"/>
+
+        <!-- スクロール可能なコンテンツエリア -->
+        <ScrollViewer Grid.Row="2" 
+                      VerticalScrollBarVisibility="Auto"
+                      Margin="0,0,0,15">
+            <StackPanel>
+                <!-- 分割方法選択 -->
+                <Border BorderBrush="#CCCCCC" 
+                        BorderThickness="1"
+                        Background="White"
+                        Padding="15"
+                        Margin="0,0,0,15">
+                    <StackPanel>
+                        <!-- ページ範囲で分割 -->
+                        <RadioButton x:Name="RangeRadio"
+                                     Content="ページ範囲で分割"
+                                     IsChecked="True"
+                                     Margin="0,0,0,10"
+                                     Checked="SplitMethod_Changed"/>
+                        <TextBox x:Name="RangeTextBox"
+                                 Margin="25,0,0,10"
+                                 Padding="5"
+                                 IsEnabled="{Binding IsChecked, ElementName=RangeRadio}"/>
+                        <TextBlock Margin="25,0,0,20" 
+                                   Foreground="Gray"
+                                   FontSize="11"
+                                   TextWrapping="Wrap"
+                                   Text="例: 1-3, 4-7, 8-10 (カンマ区切りでページ範囲を指定)"/>
+
+                        <!-- 1ページずつ分割 -->
+                        <RadioButton x:Name="PageRadio"
+                                     Content="1ページずつ分割"
+                                     Margin="0,0,0,20"
+                                     Checked="SplitMethod_Changed"/>
+
+                        <!-- 等分割 -->
+                        <RadioButton x:Name="EqualRadio"
+                                     Content="等分割"
+                                     Margin="0,0,0,10"
+                                     Checked="SplitMethod_Changed"/>
+                        <StackPanel Orientation="Horizontal" Margin="25,0,0,0">
+                            <TextBox x:Name="PartsTextBox"
+                                     Width="60"
+                                     Padding="5"
+                                     IsEnabled="{Binding IsChecked, ElementName=EqualRadio}"
+                                     PreviewTextInput="NumberOnly_PreviewTextInput"/>
+                            <TextBlock Text=" 分割" 
+                                       VerticalAlignment="Center" 
+                                       Margin="10,0,0,0"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- 保存先 -->
+                <StackPanel Margin="0,0,0,10">
+                    <TextBlock Text="保存先:" FontWeight="Bold" Margin="0,0,0,5"/>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBox x:Name="OutputPathTextBox" 
+                                 Grid.Column="0"
+                                 IsReadOnly="True"
+                                 Padding="5"
+                                 VerticalContentAlignment="Center"/>
+                        <Button Grid.Column="1" 
+                                Content="参照..." 
+                                Width="80" 
+                                Height="30"
+                                Margin="10,0,0,0"
+                                Click="BrowseButton_Click"/>
+                    </Grid>
+                </StackPanel>
+
+                <!-- ファイル名規則 -->
+                <StackPanel Margin="0,0,0,0">
+                    <TextBlock Text="ファイル名規則:" FontWeight="Bold" Margin="0,0,0,5"/>
+                    <TextBox x:Name="FileNamePatternTextBox" 
+                             Padding="5"/>
+                    <TextBlock Margin="0,5,0,0" 
+                               Foreground="Gray"
+                               FontSize="11"
+                               Text="[番号] が 001, 002, 003... に置き換えられます"/>
+                </StackPanel>
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- 実行ボタン -->
+        <StackPanel Grid.Row="3" 
+                    Orientation="Horizontal" 
+                    HorizontalAlignment="Right" 
+                    Margin="0,10,0,0">
+            <Button Content="分割実行" 
+                    Width="100" 
+                    Height="35" 
+                    Margin="0,0,10,0"
+                    IsDefault="True"
+                    Click="SplitButton_Click"
+                    FontWeight="Bold"/>
+            <Button Content="キャンセル" 
+                    Width="100" 
+                    Height="35"
+                    IsCancel="True"
+                    Click="CancelButton_Click"/>
+        </StackPanel>
+    </Grid>
+</Window>
