@@ -66,6 +66,12 @@ public partial class PdfFileInfo : ObservableObject
     private string _editingName = string.Empty;
 
     /// <summary>
+    /// サムネイルに表示するページ番号（1ベース）
+    /// </summary>
+    [ObservableProperty]
+    private int _displayPageNumber = 1;
+
+    /// <summary>
     /// ファイルサイズを人間が読みやすい形式で取得
     /// </summary>
     public string FormattedFileSize

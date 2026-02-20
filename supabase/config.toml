@@ -1,0 +1,21 @@
+# Supabase Edge Functions 設定
+# 詳細: https://supabase.com/docs/guides/functions/function-configuration
+#
+# JWT検証を無効にする理由:
+# - create-checkout-session: アプリからの匿名リクエスト、Stripe Checkout起動用
+# - stripe-webhook: Stripeからのコールバック（JWTヘッダーなし）
+# - verify-license: デスクトップアプリからのライセンスキー検証リクエスト
+#
+# 注意: Supabase CLIの既知の不具合で、deno.jsonやconfig.tomlの
+# verify_jwt設定が更新時に反映されない場合があります。その場合は
+# ダッシュボードで手動でJWT検証をOFFにするか、--no-verify-jwtで
+# デプロイしてください（docs/troubleshooting/checkout-debugging.md 参照）。
+
+[functions.create-checkout-session]
+verify_jwt = false
+
+[functions.stripe-webhook]
+verify_jwt = false
+
+[functions.verify-license]
+verify_jwt = false

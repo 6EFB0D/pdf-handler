@@ -108,3 +108,68 @@ public class ByteArrayToImageConverter : IValueConverter
         throw new NotImplementedException();
     }
 }
+
+/// <summary>
+/// Boolを色に変換するコンバーター（試用期間終了間近の警告用）
+/// </summary>
+public class BoolToColorConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        if (value is bool boolValue && boolValue)
+        {
+            return new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.Red);
+        }
+        return new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.Black);
+    }
+
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        throw new NotImplementedException();
+    }
+}
+
+/// <summary>
+/// ページ数をVisibilityに変換するコンバーター（複数ページの場合のみ表示）
+/// </summary>
+public class PageCountToVisibilityConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        if (value is int pageCount && pageCount > 1)
+        {
+            return Visibility.Visible;
+        }
+        return Visibility.Collapsed;
+    }
+
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        throw new NotImplementedException();
+    }
+}
+
+/// <summary>
+/// BoolをGridLengthに変換するコンバーター（プレビューペインの幅制御用）
+/// </summary>
+public class PreviewColumnWidthConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        if (value is bool boolValue)
+        {
+            // trueの場合は*（残りのスペースを使用）、falseの場合は0（非表示）
+            return boolValue ? new GridLength(1, GridUnitType.Star) : new GridLength(0);
+        }
+        return new GridLength(1, GridUnitType.Star);
+    }
+
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        if (value is GridLength gridLength)
+        {
+            return gridLength.Value > 0;
+        }
+        return true;
+    }
+}

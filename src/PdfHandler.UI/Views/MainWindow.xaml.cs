@@ -10,8 +10,10 @@ using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
 using PdfHandler.Core.Models;
 using System.Collections.ObjectModel;
+using PdfHandler.Core.Interfaces;
 
 namespace PdfHandler.UI.Views;
 
@@ -30,23 +32,318 @@ public partial class MainWindow : Window
 
         // ViewModelのRootFolderプロパティ変更を監視
         _viewModel.PropertyChanged += ViewModel_PropertyChanged;
+        
+        // 初期状態を設定（既にRootFolderが設定されている場合）
+        // ただし、InitializeAsyncが非同期で実行されるため、少し遅延して確認
+        Dispatcher.BeginInvoke(new Action(() =>
+        {
+            if (_viewModel.RootFolder != null)
+            {
+                var items = new ObservableCollection<FolderNode> { _viewModel.RootFolder };
+                FolderTreeView.ItemsSource = items;
+            }
+
+            // プレビューの初期状態を反映
+            UpdatePreviewColumnWidth(_viewModel.IsPreviewVisible);
+        }), System.Windows.Threading.DispatcherPriority.Loaded);
+    }
+
+    private void MainWindow_Loaded(object sender, RoutedEventArgs e)
+    {
+    }
+    
+    private void UpdatePreviewColumnWidth(bool isVisible)
+    {
+        if (MainContentGrid?.ColumnDefinitions.Count >= 5)
+        {
+            var previewColumn = MainContentGrid.ColumnDefinitions[4];
+            var thumbnailColumn = MainContentGrid.ColumnDefinitions[2];
+            var splitterColumn = MainContentGrid.ColumnDefinitions[3];
+            
+            if (isVisible)
+            {
+                // プレビューを表示：プレビュー列を*に、サムネイル列を固定幅に
+                previewColumn.Width = new GridLength(1, GridUnitType.Star);
+                thumbnailColumn.Width = new GridLength(400);
+                splitterColumn.Width = new GridLength(5);
+            }
+            else
+            {
+                // プレビューを非表示：プレビュー列を0に、サムネイル列を*に
+                previewColumn.Width = new GridLength(0);
+                thumbnailColumn.Width = new GridLength(1, GridUnitType.Star);
+                splitterColumn.Width = new GridLength(0);
+            }
+        }
     }
 
     private void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(MainWindowViewModel.RootFolder) && _viewModel?.RootFolder != null)
+        if (e.PropertyName == nameof(MainWindowViewModel.RootFolder))
         {
-            // TreeViewのItemsSourceを手動で設定
-            var items = new ObservableCollection<FolderNode> { _viewModel.RootFolder };
-            FolderTreeView.ItemsSource = items;
+            // UIスレッドで実行
+            Dispatcher.Invoke(() =>
+            {
+                // TreeViewのItemsSourceを手動で設定
+                if (_viewModel?.RootFolder != null)
+                {
+                    var items = new ObservableCollection<FolderNode> { _viewModel.RootFolder };
+                    FolderTreeView.ItemsSource = items;
+                    
+                    // 選択されたフォルダをTreeViewで選択状態にする
+                    if (_viewModel.SelectedFolder != null)
+                    {
+                        SelectFolderInTreeView(_viewModel.SelectedFolder);
+                    }
+                }
+                else
+                {
+                    // RootFolderがnullの場合は空のコレクションを設定
+                    FolderTreeView.ItemsSource = new ObservableCollection<FolderNode>();
+                }
+            });
+        }
+        else if (e.PropertyName == nameof(MainWindowViewModel.SelectedFolder) && _viewModel?.SelectedFolder != null)
+        {
+            // TreeViewで選択状態にする
+            Dispatcher.Invoke(() =>
+            {
+                SelectFolderInTreeView(_viewModel.SelectedFolder!);
+            });
+        }
+        else if (e.PropertyName == nameof(MainWindowViewModel.IsPreviewVisible))
+        {
+            // プレビューの表示/非表示に応じて列の幅を更新
+            Dispatcher.Invoke(() =>
+            {
+                UpdatePreviewColumnWidth(_viewModel?.IsPreviewVisible ?? true);
+            });
         }
     }
-
+    
+    private void SelectFolderInTreeView(FolderNode folder)
+    {
+        // TreeViewでフォルダを選択状態にする
+        // SelectedItemは読み取り専用なので、ViewModelのSelectedFolderプロパティを設定することで
+        // XAMLのバインディングで選択状態が反映される
+        if (FolderTreeView.ItemsSource is ObservableCollection<FolderNode> items && items.Count > 0)
+        {
+            var rootNode = items[0];
+            var targetNode = FindFolderNode(rootNode, folder.Path);
+            if (targetNode != null)
+            {
+                // 親ノードを展開
+                ExpandParentNodes(targetNode);
+                // ViewModelのSelectedFolderを設定（これによりTreeViewの選択状態も更新される）
+                if (_viewModel != null)
+                {
+                    _viewModel.SelectedFolder = targetNode;
+                }
+            }
+        }
+    }
+    
+    private FolderNode? FindFolderNode(FolderNode node, string targetPath)
+    {
+        if (node.Path.Equals(targetPath, StringComparison.OrdinalIgnoreCase))
+        {
+            return node;
+        }
+        
+        foreach (var child in node.Children)
+        {
+            var found = FindFolderNode(child, targetPath);
+            if (found != null)
+            {
+                return found;
+            }
+        }
+        
+        return null;
+    }
+    
+    private void ExpandParentNodes(FolderNode node)
+    {
+        // 親ノードを展開するために、ルートから該当ノードまでのパスを展開
+        if (FolderTreeView.ItemsSource is ObservableCollection<FolderNode> items && items.Count > 0)
+        {
+            var rootNode = items[0];
+            ExpandPathToNode(rootNode, node.Path);
+        }
+    }
+    
+    private bool ExpandPathToNode(FolderNode node, string targetPath)
+    {
+        if (node.Path.Equals(targetPath, StringComparison.OrdinalIgnoreCase))
+        {
+            node.IsExpanded = true;
+            return true;
+        }
+        
+        if (targetPath.StartsWith(node.Path, StringComparison.OrdinalIgnoreCase))
+        {
+            node.IsExpanded = true;
+            foreach (var child in node.Children)
+            {
+                if (ExpandPathToNode(child, targetPath))
+                {
+                    return true;
+                }
+            }
+        }
+        
+        return false;
+    }
+    
     private void TreeView_SelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
     {
         if (_viewModel != null && e.NewValue is FolderNode node)
         {
             _viewModel.SelectedFolder = node;
+        }
+    }
+
+    private async void TreeViewItem_Expanded(object sender, RoutedEventArgs e)
+    {
+        if (sender is System.Windows.Controls.TreeViewItem item && item.DataContext is FolderNode node)
+        {
+            // 遅延読み込み：展開時に子フォルダを読み込む
+            if (!node.IsChildrenLoaded && _viewModel != null)
+            {
+                await _viewModel.LoadChildrenAsync(node);
+            }
+        }
+    }
+
+    private FolderNode? _contextMenuFolderNode;
+
+    private async void FolderTreeView_ContextMenuOpening(object sender, ContextMenuEventArgs e)
+    {
+        if (sender is TreeView treeView && _viewModel != null)
+        {
+            // 右クリックされたアイテムを取得
+            var mousePosition = Mouse.GetPosition(treeView);
+            var hitTestResult = VisualTreeHelper.HitTest(treeView, mousePosition);
+            if (hitTestResult != null)
+            {
+                var item = FindParent<System.Windows.Controls.TreeViewItem>(hitTestResult.VisualHit);
+                if (item != null && item.DataContext is FolderNode clickedNode)
+                {
+                    // 選択状態にする（SelectedFolderプロパティを設定）
+                    _viewModel.SelectedFolder = clickedNode;
+                    _contextMenuFolderNode = clickedNode;
+                    item.IsSelected = true;
+
+                    // 遅延読み込み
+                    if (!clickedNode.IsChildrenLoaded)
+                    {
+                        await _viewModel.LoadChildrenAsync(clickedNode);
+                    }
+
+                    // お気に入りかどうかを確認してメニューを動的に設定
+                    if (treeView.ContextMenu is ContextMenu contextMenu)
+                    {
+                        var favorites = await _viewModel.GetFavoritesAsync();
+                        var isFavorite = favorites.Any(f => f.Path.Equals(clickedNode.Path, StringComparison.OrdinalIgnoreCase));
+                        var isEmptyPath = string.IsNullOrEmpty(clickedNode.Path);
+
+                        if (contextMenu.FindName("AddFavoriteMenuItem") is MenuItem addMenuItem)
+                        {
+                            addMenuItem.IsEnabled = !isEmptyPath && !isFavorite;
+                        }
+                        if (contextMenu.FindName("RemoveFavoriteMenuItem") is MenuItem removeMenuItem)
+                        {
+                            removeMenuItem.IsEnabled = !isEmptyPath && isFavorite;
+                        }
+                        if (contextMenu.FindName("RenameFavoriteMenuItem") is MenuItem renameMenuItem)
+                        {
+                            renameMenuItem.IsEnabled = !isEmptyPath && isFavorite;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private async void AddFavoriteMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        if (_viewModel != null && _contextMenuFolderNode != null)
+        {
+            await _viewModel.AddFavoriteAsync(_contextMenuFolderNode);
+        }
+    }
+
+    private async void RemoveFavoriteMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        if (_viewModel != null && _contextMenuFolderNode != null)
+        {
+            await _viewModel.RemoveFavoriteFromFolderAsync(_contextMenuFolderNode);
+        }
+    }
+
+    private async void RenameFavoriteMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        if (_viewModel != null && _contextMenuFolderNode != null)
+        {
+            await _viewModel.RenameFavoriteAsync(_contextMenuFolderNode);
+        }
+    }
+
+    private PdfFileInfo? _contextMenuPdfFile;
+
+    private async void RotateRightMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        if (_viewModel != null && _contextMenuPdfFile != null)
+        {
+            // サムネイルで表示しているページ番号を取得（リストビューの場合は1ページ目）
+            int pageNumber = _viewModel.IsThumbnailView ? _contextMenuPdfFile.DisplayPageNumber : 1;
+            await _viewModel.RotatePdfPageAsync(_contextMenuPdfFile, pageNumber, 90);
+        }
+    }
+
+    private async void RotateLeftMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        if (_viewModel != null && _contextMenuPdfFile != null)
+        {
+            // サムネイルで表示しているページ番号を取得（リストビューの場合は1ページ目）
+            int pageNumber = _viewModel.IsThumbnailView ? _contextMenuPdfFile.DisplayPageNumber : 1;
+            await _viewModel.RotatePdfPageAsync(_contextMenuPdfFile, pageNumber, 270);
+        }
+    }
+
+    private async void Rotate180MenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        if (_viewModel != null && _contextMenuPdfFile != null)
+        {
+            // サムネイルで表示しているページ番号を取得（リストビューの場合は1ページ目）
+            int pageNumber = _viewModel.IsThumbnailView ? _contextMenuPdfFile.DisplayPageNumber : 1;
+            await _viewModel.RotatePdfPageAsync(_contextMenuPdfFile, pageNumber, 180);
+        }
+    }
+
+    private async void ThumbnailPreviousPage_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button button && button.Tag is PdfFileInfo fileInfo && _viewModel != null)
+        {
+            if (fileInfo.DisplayPageNumber > 1)
+            {
+                fileInfo.DisplayPageNumber--;
+                // サムネイルを更新
+                await _viewModel.LoadThumbnailPageAsync(fileInfo, fileInfo.DisplayPageNumber);
+            }
+        }
+    }
+
+    private async void ThumbnailNextPage_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button button && button.Tag is PdfFileInfo fileInfo && _viewModel != null)
+        {
+            if (fileInfo.DisplayPageNumber < fileInfo.PageCount)
+            {
+                fileInfo.DisplayPageNumber++;
+                // サムネイルを更新
+                await _viewModel.LoadThumbnailPageAsync(fileInfo, fileInfo.DisplayPageNumber);
+            }
         }
     }
 
@@ -63,11 +360,36 @@ public partial class MainWindow : Window
         aboutDialog.ShowDialog();
     }
 
+    private void License_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new LicenseDialog { Owner = this };
+        dialog.ShowDialog();
+        _viewModel?.UpdateTrialStatus();
+    }
+
     // インライン編集機能
     private void FileListView_KeyDown(object sender, KeyEventArgs e)
     {
         if (e.Key == Key.F2 && _viewModel?.SelectedPdfFile != null)
         {
+            // ライセンスチェック
+            var app = (App)Application.Current;
+            var licenseService = app.GetService<ILicenseService>();
+            if (!licenseService.CanUseRename())
+            {
+                MessageBox.Show(
+                    "ファイル名変更機能は有償版の機能です。\n\n14日間の試用期間中は全機能をご利用いただけます。\n試用期間が終了した場合は、ライセンスの購入が必要です。",
+                    "機能制限",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+                
+                // ライセンスダイアログを表示
+                var licenseDialog = new LicenseDialog { Owner = this };
+                licenseDialog.ShowDialog();
+                e.Handled = true;
+                return;
+            }
+            
             StartInlineEdit(_viewModel.SelectedPdfFile);
             e.Handled = true;
         }
@@ -82,6 +404,24 @@ public partial class MainWindow : Window
     {
         if (e.ClickCount == 2 && sender is TextBlock textBlock && textBlock.DataContext is PdfFileInfo file)
         {
+            // ライセンスチェック
+            var app = (App)Application.Current;
+            var licenseService = app.GetService<ILicenseService>();
+            if (!licenseService.CanUseRename())
+            {
+                MessageBox.Show(
+                    "ファイル名変更機能は有償版の機能です。\n\n14日間の試用期間中は全機能をご利用いただけます。\n試用期間が終了した場合は、ライセンスの購入が必要です。",
+                    "機能制限",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+                
+                // ライセンスダイアログを表示
+                var licenseDialog = new LicenseDialog { Owner = this };
+                licenseDialog.ShowDialog();
+                e.Handled = true;
+                return;
+            }
+            
             StartInlineEdit(file);
             e.Handled = true;
         }
@@ -89,6 +429,14 @@ public partial class MainWindow : Window
 
     private void StartInlineEdit(PdfFileInfo file)
     {
+        // ライセンスチェック（念のため）
+        var app = (App)Application.Current;
+        var licenseService = app.GetService<ILicenseService>();
+        if (!licenseService.CanUseRename())
+        {
+            return;
+        }
+        
         file.EditingName = Path.GetFileNameWithoutExtension(file.FileName);
         file.IsEditing = true;
     }
@@ -351,5 +699,60 @@ public partial class MainWindow : Window
 
         // ファイルを削除
         await _viewModel.DeleteFilesAsync(selectedFiles);
+    }
+
+    private void OpenBinderManager_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new BinderManagerDialog();
+        dialog.Owner = this;
+        dialog.ShowDialog();
+    }
+
+    private void PrintDriverSettings_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new PrintDriverSettingsDialog();
+        dialog.Owner = this;
+        dialog.ShowDialog();
+    }
+
+    private void FileListView_ContextMenuOpening(object sender, ContextMenuEventArgs e)
+    {
+        // 右クリックメニューが開かれた時に、選択されたファイルを更新
+        if (sender is ListView listView)
+        {
+            // 現在選択されているアイテムがあれば、それをViewModelに設定
+            if (listView.SelectedItem is PdfFileInfo selectedFile && _viewModel != null)
+            {
+                _viewModel.SelectedPdfFile = selectedFile;
+                _contextMenuPdfFile = selectedFile;
+            }
+            // 選択されていない場合は、マウス位置のアイテムを取得
+            else
+            {
+                var mousePosition = Mouse.GetPosition(listView);
+                var hitTestResult = VisualTreeHelper.HitTest(listView, mousePosition);
+                if (hitTestResult != null)
+                {
+                    var item = FindParent<ListViewItem>(hitTestResult.VisualHit);
+                    if (item != null && item.DataContext is PdfFileInfo clickedFile)
+                    {
+                        listView.SelectedItem = clickedFile;
+                        if (_viewModel != null)
+                        {
+                            _viewModel.SelectedPdfFile = clickedFile;
+                            _contextMenuPdfFile = clickedFile;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private static T? FindParent<T>(DependencyObject child) where T : DependencyObject
+    {
+        var parentObject = VisualTreeHelper.GetParent(child);
+        if (parentObject == null) return null;
+        if (parentObject is T parent) return parent;
+        return FindParent<T>(parentObject);
     }
 }

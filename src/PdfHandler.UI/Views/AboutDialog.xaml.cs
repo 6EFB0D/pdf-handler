@@ -261,7 +261,7 @@ namespace PdfHandler.UI.Views
         /// </summary>
         private void License_Click(object sender, RoutedEventArgs e)
         {
-            var licenseDialog = new LicenseInfoDialog();
+            var licenseDialog = new LicenseDialog();
             licenseDialog.Owner = this;
             licenseDialog.ShowDialog();
         }

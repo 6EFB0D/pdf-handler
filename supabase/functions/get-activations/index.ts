@@ -1,0 +1,113 @@
+// Supabase Edge Function: get-activations
+// ライセンスに紐づくアクティベーション一覧を取得（ライセンス管理ダイアログ用）
+
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+
+interface RequestBody {
+  licenseKey: string;
+  hardwareId: string; // 呼び出し元のハードウェアID（認証・「このPC」判定に使用）
+}
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Content-Type": "application/json",
+};
+
+serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const { licenseKey, hardwareId }: RequestBody = await req.json();
+
+    if (!licenseKey || !hardwareId) {
+      return new Response(
+        JSON.stringify({ error: "ライセンスキーとハードウェアIDが必要です" }),
+        { status: 400, headers: corsHeaders }
+      );
+    }
+
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+    // ライセンスを検索
+    const { data: license, error: licenseError } = await supabase
+      .from("licenses")
+      .select("id")
+      .eq("license_key", licenseKey)
+      .eq("is_active", true)
+      .single();
+
+    if (licenseError || !license) {
+      return new Response(
+        JSON.stringify({ error: "ライセンスが見つかりません" }),
+        { status: 404, headers: corsHeaders }
+      );
+    }
+
+    // 呼び出し元のハードウェアIDがこのライセンスにアクティベートされているか確認
+    const { data: callerActivation } = await supabase
+      .from("license_activations")
+      .select("id")
+      .eq("license_id", license.id)
+      .eq("hardware_id", hardwareId)
+      .eq("is_active", true)
+      .single();
+
+    if (!callerActivation) {
+      return new Response(
+        JSON.stringify({ error: "このデバイスはライセンスにアクティベートされていません" }),
+        { status: 403, headers: corsHeaders }
+      );
+    }
+
+    // アクティベーション一覧を取得（is_active = true のみ）
+    const { data: activations, error: activationsError } = await supabase
+      .from("license_activations")
+      .select("id, hardware_id, device_name, display_name, activation_date, last_verification_date")
+      .eq("license_id", license.id)
+      .eq("is_active", true)
+      .order("activation_date", { ascending: true });
+
+    if (activationsError) {
+      console.error("get-activations error:", activationsError);
+      return new Response(
+        JSON.stringify({ error: activationsError.message }),
+        { status: 500, headers: corsHeaders }
+      );
+    }
+
+    // 表示名を決定: display_name ?? device_name ?? "デバイスN"
+    const result = (activations ?? []).map((a, index) => ({
+      id: a.id,
+      isCurrentDevice: a.hardware_id === hardwareId,
+      displayName: a.display_name ?? a.device_name ?? `デバイス${index + 1}`,
+      deviceName: a.device_name,
+      activationDate: a.activation_date,
+      lastVerificationDate: a.last_verification_date,
+    }));
+
+    const deviceLimit = 3;
+
+    return new Response(
+      JSON.stringify({
+        activations: result,
+        deviceLimit,
+        deviceCount: result.length,
+      }),
+      { headers: corsHeaders }
+    );
+  } catch (error) {
+    console.error("get-activations:", error);
+    return new Response(
+      JSON.stringify({ error: (error as Error).message }),
+      { status: 500, headers: corsHeaders }
+    );
+  }
+});
