@@ -1,5 +1,10 @@
 # PDFハンドラ デスクトップアプリケーション
 
+[![GitHub release](https://img.shields.io/github/v/release/6EFB0D/pdf-handler?style=flat-square)](https://github.com/6EFB0D/pdf-handler/releases/latest)
+[![GitHub all releases](https://img.shields.io/github/downloads/6EFB0D/pdf-handler/total?style=flat-square&label=total%20downloads)](https://github.com/6EFB0D/pdf-handler/releases)
+[![GitHub release downloads](https://img.shields.io/github/downloads/6EFB0D/pdf-handler/latest/total?style=flat-square&label=latest%20downloads)](https://github.com/6EFB0D/pdf-handler/releases/latest)
+[![License](https://img.shields.io/github/license/6EFB0D/pdf-handler?style=flat-square)](LICENSE)
+
 ファイルサーバ上のPDFファイルを効率的に管理・編集するためのWPFデスクトップアプリケーション
 
 ## プロジェクト構成
@@ -29,11 +34,11 @@ pdf-handler/
 - **DIコンテナ**: Microsoft.Extensions.DependencyInjection
 - **MVVMツールキット**: CommunityToolkit.Mvvm
 - **PDFライブラリ**:
-  - **PdfSharp 6.1.1** (PDF操作・結合・分割) - MIT License（完全無償・商用利用可能）
+  - **PdfSharp 6.1.1** (PDF操作・結合・分割) - MIT License
   - **Docnet.Core 2.6.0** (PDF表示・サムネイル生成) - MIT License
   - System.Drawing.Common (画像処理)
 
-**注意:** v1.0.0でiText 7（AGPL）からPdfSharp（MIT）に移行し、完全無償化を実現しました。
+すべてMITライセンスのライブラリを使用しており、**完全無償・商用利用可能**です。
 
 ## 主要機能
 
@@ -52,6 +57,28 @@ pdf-handler/
 - ページ範囲指定分割
 - 1ページずつ分割
 - 等分割
+
+## インストール方法
+
+### 一般ユーザー向け
+
+**実行可能ファイル（.exe）をダウンロードして使用する場合**
+
+1. **最新リリースをダウンロード**
+   - [Releases ページ](https://github.com/6EFB0D/pdf-handler/releases/latest)にアクセス
+   - 最新バージョンの「Assets」セクションから `PdfHandler-v4.0.0-win-x64.exe` をダウンロード
+
+2. **アプリケーションを起動**
+   - ダウンロードした `PdfHandler-v4.0.0-win-x64.exe` をダブルクリックして起動
+   - インストール不要で即座に使用可能です
+
+3. **システム要件**
+   - Windows 10 / 11 (64bit)
+   - .NET 8.0 Runtime（アプリに同梱されているため別途インストール不要）
+
+### 開発者向け
+
+ソースコードからビルドする場合は、以下の「ビルド方法」セクションを参照してください。
 
 ## ビルド方法
 
@@ -145,9 +172,7 @@ dotnet run
 - 🔲 ページ抽出・回転・削除機能
 - 🔲 注釈機能（ハイライト、テキストボックス、手書き）
 - 🔲 ドラッグ&ドロップ対応
-- 🔲 ファイル形式変換（PDF↔Word、Excel、画像）
 - 🔲 ページサムネイル一覧表示
-- 🔲 AI機能（文書要約、セマンティック検索）
 
 ## ライセンス購入
 
@@ -202,27 +227,6 @@ dotnet --version
 - フォルダへのアクセス権限を確認
 - PDFファイルが他のアプリケーションで開かれていないか確認
 
-## 今後の開発予定
-
-### Phase 1: 基本機能拡張（Month 1-3）
-- ページ抽出・回転・削除機能
-- 注釈機能（ハイライト、テキストボックス、手書き）
-- ドラッグ&ドロップ対応
-- ファイル形式変換（PDF↔Word、Excel、画像）
-- ページサムネイル一覧表示
-
-### Phase 2: AI基盤開発（Month 1-4、並行）
-- Claude API統合基盤
-- APIキー管理
-- エラーハンドリング
-- トークン数管理
-
-### Phase 3: 有償化対応（Month 3-6）
-- 決済システム統合
-- セキュリティ実装
-- ライセンス管理
-- ユーザー認証
-
 ## 参考資料
 
 - [WPF公式ドキュメント](https://docs.microsoft.com/wpf/)
@@ -235,8 +239,14 @@ dotnet --version
 
 プロジェクトへの貢献を歓迎します。Issue報告やPull Requestをお待ちしています。
 
-## 連絡先
+## サポート・お問い合わせ
 
 - プロジェクト管理者: PDFハンドラ開発チーム
 - バージョン: 1.0.0
 - 最終更新: 2025年1月1日
+バグ報告や機能要望は、[GitHub Issues](https://github.com/6EFB0D/pdf-handler/issues) にてお願いします。
+
+---
+
+**バージョン**: 4.0.0
+**最終更新**: 2026年1月1日
