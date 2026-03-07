@@ -11,6 +11,7 @@ interface RequestBody {
   licenseKey: string;
   hardwareId: string;
   deviceName?: string; // アクティベーション時の PC 名（Environment.MachineName）
+  appVersion?: string; // アプリのバージョン（例: "1.0.0"）、初回アクティベーション時に purchased_version 設定に使用
 }
 
 serve(async (req) => {
@@ -26,7 +27,7 @@ serve(async (req) => {
       });
     }
 
-    const { licenseKey, hardwareId, deviceName }: RequestBody = await req.json();
+    const { licenseKey, hardwareId, deviceName, appVersion }: RequestBody = await req.json();
 
     if (!licenseKey || !hardwareId) {
       return new Response(
@@ -79,6 +80,19 @@ serve(async (req) => {
         .single();
 
       if (!activation) {
+        // 初回アクティベーション: purchased_version が未設定なら設定
+        let purchasedVersion = license.purchased_version;
+        if (!purchasedVersion) {
+          purchasedVersion = parsePurchasedVersionFromKey(license.license_key) ?? getMajorFromAppVersion(appVersion) ?? "1";
+          await supabase
+            .from("licenses")
+            .update({ purchased_version: purchasedVersion })
+            .eq("id", license.id)
+            .then(() => {})
+            .catch(() => {});
+          license.purchased_version = purchasedVersion;
+        }
+
         // アクティベーションが存在しない場合は作成
         const { error: activationError } = await supabase
           .from("license_activations")
@@ -139,10 +153,12 @@ serve(async (req) => {
         .update({ last_verification_date: new Date().toISOString() })
         .eq("id", license.id);
 
+      const pv = license.purchased_version ?? parsePurchasedVersionFromKey(license.license_key);
       return new Response(
         JSON.stringify({
           isValid: true,
           plan: license.plan,
+          purchasedVersion: pv ?? null,
           expirationDate: license.expiration_date,
           subscriptionRenewalDate: license.subscription_renewal_date,
           lastVerificationDate: new Date().toISOString(),
@@ -259,6 +275,7 @@ serve(async (req) => {
         JSON.stringify({
           isValid: true,
           plan: license.plan,
+          purchasedVersion: null, // サブスクは全バージョン
           expirationDate: license.expiration_date,
           subscriptionRenewalDate: license.subscription_renewal_date,
           lastVerificationDate: new Date().toISOString(),
@@ -300,4 +317,19 @@ serve(async (req) => {
     );
   }
 });
+
+/** 新形式 PDFH-P101-xxx から purchased_version を取得。旧形式は null */
+function parsePurchasedVersionFromKey(key: string): string | null {
+  const m = key.match(/^PDFH-(P[12])(\d{2})-/);
+  if (!m) return null;
+  const ver = m[2];
+  return ver === "00" ? null : String(parseInt(ver, 10));
+}
+
+/** appVersion "1.0.0" からメジャー "1" を取得 */
+function getMajorFromAppVersion(appVersion?: string): string | null {
+  if (!appVersion || typeof appVersion !== "string") return null;
+  const m = appVersion.trim().match(/^(\d+)/);
+  return m ? m[1] : null;
+}
 

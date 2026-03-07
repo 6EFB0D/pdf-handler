@@ -23,6 +23,17 @@ namespace PdfHandler.UI.Views;
 public partial class MainWindow : Window
 {
     private MainWindowViewModel? _viewModel;
+    private Point _thumbnailDragStart;
+    private bool _thumbnailDragStarted;
+    private string? _insertTargetPathForDrag; // ドラッグ開始時の挿入先（フォーカス移動を避けるため）
+    private Point _fileListDragStart;
+    private bool _fileListDragStarted;
+    private Point _thumbnailRightDragStart;
+    private bool _thumbnailRightDragStarted;
+    private Point _fileListRightDragStart;
+    private bool _fileListRightDragStarted;
+    private List<string> _pendingDropSourcePaths = new();
+    private string _pendingDropTargetPath = string.Empty;
 
     public MainWindow(MainWindowViewModel viewModel)
     {
@@ -50,6 +61,15 @@ public partial class MainWindow : Window
 
     private void MainWindow_Loaded(object sender, RoutedEventArgs e)
     {
+    }
+
+    private void MainWindow_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
+    {
+        if (_viewModel != null)
+        {
+            _viewModel.PropertyChanged -= ViewModel_PropertyChanged;
+            _viewModel = null;
+        }
     }
     
     private void UpdatePreviewColumnWidth(bool isVisible)
@@ -195,6 +215,142 @@ public partial class MainWindow : Window
         return false;
     }
     
+    private void FileListItem_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is System.Windows.Controls.ListViewItem item && item.DataContext is PdfFileInfo)
+        {
+            _fileListDragStart = e.GetPosition(null);
+            _fileListDragStarted = true;
+        }
+    }
+
+    private void FileListItem_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        _fileListDragStarted = false;
+    }
+
+    private void FileListItem_PreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is System.Windows.Controls.ListViewItem item && item.DataContext is PdfFileInfo)
+        {
+            _fileListRightDragStart = e.GetPosition(null);
+            _fileListRightDragStarted = true;
+        }
+    }
+
+    private void FileListItem_PreviewMouseRightButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        _fileListRightDragStarted = false;
+    }
+
+    private void FileListItem_PreviewMouseMove(object sender, MouseEventArgs e)
+    {
+        if (sender is not System.Windows.Controls.ListViewItem item || item.DataContext is not PdfFileInfo fileInfo)
+            return;
+
+        var pos = e.GetPosition(null);
+
+        if (_fileListDragStarted && e.LeftButton == MouseButtonState.Pressed)
+        {
+            if (Math.Abs(pos.X - _fileListDragStart.X) < 5 && Math.Abs(pos.Y - _fileListDragStart.Y) < 5) return;
+            _fileListDragStarted = false;
+            var data = new DataObject("PdfFile", fileInfo.FilePath);
+            if (FileListView.SelectedItems.Count > 1 && FileListView.SelectedItems.Contains(fileInfo))
+            {
+                var paths = FileListView.SelectedItems.Cast<PdfFileInfo>().Select(x => x.FilePath).ToArray();
+                data.SetData("PdfFiles", paths);
+            }
+            DragDrop.DoDragDrop(item, data, DragDropEffects.Copy | DragDropEffects.Move);
+            return;
+        }
+
+        if (_fileListRightDragStarted && e.RightButton == MouseButtonState.Pressed)
+        {
+            if (Math.Abs(pos.X - _fileListRightDragStart.X) < 5 && Math.Abs(pos.Y - _fileListRightDragStart.Y) < 5) return;
+            _fileListRightDragStarted = false;
+            var data = new DataObject("PdfFile", fileInfo.FilePath);
+            data.SetData("ShowCopyMoveMenu", true);
+            if (FileListView.SelectedItems.Count > 1 && FileListView.SelectedItems.Contains(fileInfo))
+            {
+                var paths = FileListView.SelectedItems.Cast<PdfFileInfo>().Select(x => x.FilePath).ToArray();
+                data.SetData("PdfFiles", paths);
+            }
+            DragDrop.DoDragDrop(item, data, DragDropEffects.Copy | DragDropEffects.Move);
+        }
+    }
+
+    private void FolderTreeViewItem_DragOver(object sender, DragEventArgs e)
+    {
+        if (sender is not System.Windows.Controls.TreeViewItem item || item.DataContext is not FolderNode node)
+            return;
+        if (string.IsNullOrEmpty(node.Path) || !Directory.Exists(node.Path))
+            return;
+        if (e.Data.GetDataPresent("PdfFile") || e.Data.GetDataPresent("PdfFiles") || e.Data.GetDataPresent(DataFormats.FileDrop))
+        {
+            e.Effects = DragDropEffects.Copy;
+            e.Handled = true;
+        }
+    }
+
+    private void FolderTreeViewItem_Drop(object sender, DragEventArgs e)
+    {
+        if (sender is not System.Windows.Controls.TreeViewItem item || item.DataContext is not FolderNode node)
+            return;
+        if (string.IsNullOrEmpty(node.Path) || !Directory.Exists(node.Path))
+            return;
+
+        var sourcePaths = new List<string>();
+        if (e.Data.GetDataPresent("PdfFiles"))
+        {
+            var paths = e.Data.GetData("PdfFiles") as string[];
+            if (paths != null) sourcePaths.AddRange(paths);
+        }
+        else if (e.Data.GetDataPresent("PdfFile"))
+        {
+            var path = e.Data.GetData("PdfFile") as string;
+            if (!string.IsNullOrEmpty(path)) sourcePaths.Add(path);
+        }
+        else if (e.Data.GetDataPresent(DataFormats.FileDrop))
+        {
+            var files = (string[]?)e.Data.GetData(DataFormats.FileDrop);
+            if (files != null)
+            {
+                foreach (var f in files)
+                    if (File.Exists(f)) sourcePaths.Add(f);
+            }
+        }
+
+        if (sourcePaths.Count == 0 || _viewModel == null) { e.Handled = true; return; }
+
+        if (e.Data.GetDataPresent("ShowCopyMoveMenu"))
+        {
+            _pendingDropSourcePaths = new List<string>(sourcePaths);
+            _pendingDropTargetPath = node.Path;
+
+            var menu = new ContextMenu();
+            var copyItem = new MenuItem { Header = "ここにコピー" };
+            copyItem.Click += async (_, _) =>
+            {
+                if (_pendingDropSourcePaths.Count > 0) await _viewModel.CopyFilesToFolderAsync(_pendingDropSourcePaths, _pendingDropTargetPath);
+            };
+            var moveItem = new MenuItem { Header = "ここに移動" };
+            moveItem.Click += async (_, _) =>
+            {
+                if (_pendingDropSourcePaths.Count > 0) await _viewModel.MoveFilesToFolderAsync(_pendingDropSourcePaths, _pendingDropTargetPath);
+            };
+            menu.Items.Add(copyItem);
+            menu.Items.Add(moveItem);
+            menu.PlacementTarget = item;
+            menu.Placement = System.Windows.Controls.Primitives.PlacementMode.MousePoint;
+            menu.IsOpen = true;
+        }
+        else
+        {
+            _ = _viewModel.CopyFilesToFolderAsync(sourcePaths, node.Path);
+        }
+        e.Handled = true;
+    }
+
     private void TreeView_SelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
     {
         if (_viewModel != null && e.NewValue is FolderNode node)
@@ -352,6 +508,123 @@ public partial class MainWindow : Window
         Application.Current.Shutdown();
     }
 
+    private void Preview_DragOver(object sender, DragEventArgs e)
+    {
+        var hasTarget = _viewModel?.SelectedPdfFile != null || e.Data.GetDataPresent("PdfInsertTarget");
+        if (!hasTarget) return;
+        if (e.Data.GetDataPresent(DataFormats.FileDrop))
+        {
+            var files = (string[]?)e.Data.GetData(DataFormats.FileDrop);
+            if (files != null && files.Any(f => f.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase)))
+            {
+                e.Effects = DragDropEffects.Copy;
+                e.Handled = true;
+                return;
+            }
+        }
+        if (e.Data.GetDataPresent("PdfFile"))
+        {
+            e.Effects = DragDropEffects.Copy;
+            e.Handled = true;
+        }
+    }
+
+    private void ThumbnailItem_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        _thumbnailDragStarted = false;
+    }
+
+    private void ThumbnailItem_MouseRightButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is FrameworkElement fe && fe.DataContext is PdfFileInfo)
+        {
+            _thumbnailRightDragStart = e.GetPosition(null);
+            _thumbnailRightDragStarted = true;
+        }
+    }
+
+    private void ThumbnailItem_MouseRightButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        _thumbnailRightDragStarted = false;
+    }
+
+    private void ThumbnailItem_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is FrameworkElement fe && fe.DataContext is PdfFileInfo fileInfo)
+        {
+            // ドラッグ開始前に挿入先を記録（クリックでフォーカスが移る前に取得）
+            _insertTargetPathForDrag = _viewModel?.SelectedPdfFile?.FilePath;
+            _thumbnailDragStart = e.GetPosition(null);
+            _thumbnailDragStarted = true;
+        }
+    }
+
+    private void ThumbnailItem_MouseMove(object sender, MouseEventArgs e)
+    {
+        if (sender is not FrameworkElement fe || fe.DataContext is not PdfFileInfo fileInfo) return;
+
+        var pos = e.GetPosition(null);
+        var isRightDrag = _thumbnailRightDragStarted && e.RightButton == MouseButtonState.Pressed;
+        var isLeftDrag = _thumbnailDragStarted && e.LeftButton == MouseButtonState.Pressed;
+
+        if (isLeftDrag)
+        {
+            if (Math.Abs(pos.X - _thumbnailDragStart.X) < 5 && Math.Abs(pos.Y - _thumbnailDragStart.Y) < 5) return;
+            _thumbnailDragStarted = false;
+            var data = new DataObject("PdfFile", fileInfo.FilePath);
+            if (!string.IsNullOrEmpty(_insertTargetPathForDrag))
+                data.SetData("PdfInsertTarget", _insertTargetPathForDrag);
+            if (_viewModel != null && ThumbnailListView.SelectedItems.Count > 1 && ThumbnailListView.SelectedItems.Contains(fileInfo))
+            {
+                var paths = ThumbnailListView.SelectedItems.Cast<PdfFileInfo>().Select(x => x.FilePath).ToArray();
+                data.SetData("PdfFiles", paths);
+            }
+            DragDrop.DoDragDrop(fe, data, DragDropEffects.Copy | DragDropEffects.Move);
+            return;
+        }
+
+        if (isRightDrag)
+        {
+            if (Math.Abs(pos.X - _thumbnailRightDragStart.X) < 5 && Math.Abs(pos.Y - _thumbnailRightDragStart.Y) < 5) return;
+            _thumbnailRightDragStarted = false;
+            var data = new DataObject("PdfFile", fileInfo.FilePath);
+            data.SetData("ShowCopyMoveMenu", true);
+            if (_viewModel != null && ThumbnailListView.SelectedItems.Count > 1 && ThumbnailListView.SelectedItems.Contains(fileInfo))
+            {
+                var paths = ThumbnailListView.SelectedItems.Cast<PdfFileInfo>().Select(x => x.FilePath).ToArray();
+                data.SetData("PdfFiles", paths);
+            }
+            DragDrop.DoDragDrop(fe, data, DragDropEffects.Copy | DragDropEffects.Move);
+        }
+    }
+
+    private async void Preview_Drop(object sender, DragEventArgs e)
+    {
+        string? targetPath = null; // 挿入先PDF（サムネイルドラッグ時はドラッグデータから取得）
+        if (e.Data.GetDataPresent("PdfInsertTarget"))
+            targetPath = e.Data.GetData("PdfInsertTarget") as string;
+        if (string.IsNullOrEmpty(targetPath) && _viewModel?.SelectedPdfFile != null)
+            targetPath = _viewModel.SelectedPdfFile.FilePath;
+
+        if (string.IsNullOrEmpty(targetPath)) return;
+
+        string? pdfPath = null;
+        if (e.Data.GetDataPresent(DataFormats.FileDrop))
+        {
+            var files = (string[]?)e.Data.GetData(DataFormats.FileDrop);
+            pdfPath = files?.FirstOrDefault(f => f.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase));
+        }
+        else if (e.Data.GetDataPresent("PdfFile"))
+        {
+            pdfPath = e.Data.GetData("PdfFile") as string;
+        }
+        if (!string.IsNullOrEmpty(pdfPath) && File.Exists(pdfPath))
+        {
+            await _viewModel!.InsertPdfAtCurrentPageAsync(pdfPath, targetPath);
+        }
+        e.Handled = true;
+    }
+
     private void About_Click(object sender, RoutedEventArgs e)
     {
         // AboutDialogを表示
@@ -367,9 +640,21 @@ public partial class MainWindow : Window
         _viewModel?.UpdateTrialStatus();
     }
 
-    // インライン編集機能
+    // インライン編集機能・ショートカット
     private void FileListView_KeyDown(object sender, KeyEventArgs e)
     {
+        if (e.Key == Key.C && (Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control)
+        {
+            CopyFiles_Click(sender, e);
+            e.Handled = true;
+            return;
+        }
+        if (e.Key == Key.V && (Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control)
+        {
+            PasteFiles_Click(sender, e);
+            e.Handled = true;
+            return;
+        }
         if (e.Key == Key.F2 && _viewModel?.SelectedPdfFile != null)
         {
             // ライセンスチェック
@@ -612,6 +897,28 @@ public partial class MainWindow : Window
         }
     }
 
+    private async void HeaderFooter_Click(object sender, RoutedEventArgs e)
+    {
+        if (_viewModel?.SelectedPdfFile == null)
+        {
+            MessageBox.Show("PDFファイルを選択してください。", "操作ヒント",
+                MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        var file = _viewModel.SelectedPdfFile;
+        var dialog = new HeaderFooterDialog(file.FilePath, file.PageCount)
+        {
+            Owner = this
+        };
+        if (dialog.ShowDialog() == true && dialog.AppliedSettings != null)
+        {
+            _viewModel.SetHeaderFooterSettingsForAutoReapply(dialog.AppliedSettings, file.FilePath);
+            _viewModel.StatusText = "ヘッダ・フッターを適用しました";
+            await _viewModel.RefreshAndLoadPageAfterHeaderFooterAsync(file.FilePath, _viewModel.CurrentPageNumber);
+        }
+    }
+
     // PDF結合（複数選択対応）
     private async void MergePdfs_Click(object sender, RoutedEventArgs e)
     {
@@ -652,6 +959,28 @@ public partial class MainWindow : Window
             MessageBox.Show("結合するPDFファイルを選択してください。\n\n複数選択: Ctrlキーを押しながらクリック", "情報",
                 MessageBoxButton.OK, MessageBoxImage.Information);
         }
+    }
+
+    // コピー（複数選択対応）
+    private void CopyFiles_Click(object sender, RoutedEventArgs e)
+    {
+        if (_viewModel == null) return;
+        var selected = new List<PdfFileInfo>();
+        if (_viewModel.IsThumbnailView && ThumbnailListView.SelectedItems.Count > 0)
+        {
+            foreach (PdfFileInfo item in ThumbnailListView.SelectedItems) selected.Add(item);
+        }
+        else if (!_viewModel.IsThumbnailView && FileListView.SelectedItems.Count > 0)
+        {
+            foreach (PdfFileInfo item in FileListView.SelectedItems) selected.Add(item);
+        }
+        if (selected.Count > 0) _viewModel.CopyFiles(selected);
+    }
+
+    // ペースト
+    private async void PasteFiles_Click(object sender, RoutedEventArgs e)
+    {
+        if (_viewModel != null) await _viewModel.PasteFilesCommand.ExecuteAsync(null);
     }
 
     // ファイル削除（複数選択対応）

@@ -13,6 +13,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using PdfHandler.Core.Interfaces;
 using PdfHandler.Core.Models;
+using PdfHandler.UI.Helpers;
 using PdfHandler.UI.Views;
 
 namespace PdfHandler.UI.ViewModels;
@@ -29,7 +30,12 @@ public partial class MainWindowViewModel : ObservableObject
     private readonly IFavoriteService _favoriteService;
     private readonly ILicenseService _licenseService;
     private readonly IPdfRotateService _pdfRotateService;
+    private readonly IPdfPageService _pdfPageService;
+    private readonly IHeaderFooterService _headerFooterService;
     private readonly IWorkFolderService _workFolderService;
+
+    private HeaderFooterSettings? _headerFooterSettingsForAutoReapply;
+    private string? _lastAppliedHeaderFooterPath;
 
     [ObservableProperty]
     private FolderNode? _rootFolder;
@@ -95,6 +101,15 @@ public partial class MainWindowViewModel : ObservableObject
     // コピー・ペースト用の一時保存
     private List<string> _copiedFilePaths = new();
 
+    // 元に戻す／やり直し
+    private readonly UndoRedoManager _undoRedoManager = new();
+
+    [ObservableProperty]
+    private bool _canUndo;
+
+    [ObservableProperty]
+    private bool _canRedo;
+
     public MainWindowViewModel(
         IFileService fileService,
         IPdfService pdfService,
@@ -103,6 +118,8 @@ public partial class MainWindowViewModel : ObservableObject
         IFavoriteService favoriteService,
         ILicenseService licenseService,
         IPdfRotateService pdfRotateService,
+        IPdfPageService pdfPageService,
+        IHeaderFooterService headerFooterService,
         IWorkFolderService workFolderService)
     {
         _fileService = fileService;
@@ -112,7 +129,17 @@ public partial class MainWindowViewModel : ObservableObject
         _favoriteService = favoriteService;
         _licenseService = licenseService;
         _pdfRotateService = pdfRotateService;
+        _pdfPageService = pdfPageService;
+        _headerFooterService = headerFooterService;
         _workFolderService = workFolderService;
+
+        _undoRedoManager.UndoRedoStateChanged += () =>
+        {
+            CanUndo = _undoRedoManager.CanUndo;
+            CanRedo = _undoRedoManager.CanRedo;
+            UndoCommand.NotifyCanExecuteChanged();
+            RedoCommand.NotifyCanExecuteChanged();
+        };
 
         // 初期化処理を順次実行
         _ = InitializeAsync();
@@ -163,6 +190,60 @@ public partial class MainWindowViewModel : ObservableObject
             MessageBox.Show($"初期化中にエラーが発生しました: {ex.Message}", "エラー",
                 MessageBoxButton.OK, MessageBoxImage.Error);
         }
+    }
+
+    [RelayCommand(CanExecute = nameof(CanExecuteUndo))]
+    private async Task UndoAsync()
+    {
+        if (!_undoRedoManager.Undo()) return;
+        StatusText = "元に戻しました";
+        await RefreshAsync();
+        if (SelectedPdfFile != null)
+            await LoadPageAsync(SelectedPdfFile.FilePath, CurrentPageNumber);
+    }
+
+    private bool CanExecuteUndo() => _undoRedoManager.CanUndo;
+
+    [RelayCommand(CanExecute = nameof(CanExecuteRedo))]
+    private async Task RedoAsync()
+    {
+        if (!_undoRedoManager.Redo()) return;
+        StatusText = "やり直しました";
+        await RefreshAsync();
+        if (SelectedPdfFile != null)
+            await LoadPageAsync(SelectedPdfFile.FilePath, CurrentPageNumber);
+    }
+
+    private bool CanExecuteRedo() => _undoRedoManager.CanRedo;
+
+    public void SetHeaderFooterSettingsForAutoReapply(HeaderFooterSettings settings, string filePath)
+    {
+        _headerFooterSettingsForAutoReapply = settings;
+        _lastAppliedHeaderFooterPath = filePath;
+    }
+
+    /// <summary>
+    /// ヘッダ・フッター適用後に呼び出し（表示の更新）
+    /// </summary>
+    public async Task RefreshAndLoadPageAfterHeaderFooterAsync(string filePath, int pageNumber)
+    {
+        await RefreshAsync();
+        await LoadPageAsync(filePath, pageNumber);
+    }
+
+    private async Task ReapplyHeaderFooterIfNeeded(string modifiedFilePath)
+    {
+        if (_headerFooterSettingsForAutoReapply == null) return;
+        if (!_headerFooterSettingsForAutoReapply.AutoReapplyOnPageEdit) return;
+        if (string.IsNullOrEmpty(_lastAppliedHeaderFooterPath)) return;
+        if (!string.Equals(Path.GetFullPath(modifiedFilePath), Path.GetFullPath(_lastAppliedHeaderFooterPath), StringComparison.OrdinalIgnoreCase))
+            return;
+
+        StatusText = "ヘッダ・フッターを再適用中...";
+        var progress = new Progress<int>(p => StatusText = $"ヘッダ・フッター再適用中... {p}%");
+        var success = await _headerFooterService.AddHeaderFooterAsync(modifiedFilePath, _headerFooterSettingsForAutoReapply, null, progress);
+        if (success)
+            StatusText = "ヘッダ・フッターを再適用しました";
     }
 
     private async Task InitializeLicenseAsync()
@@ -1333,6 +1414,185 @@ public partial class MainWindowViewModel : ObservableObject
         }
     }
 
+    [RelayCommand]
+    private async Task PageOperationsAsync()
+    {
+        try
+        {
+        if (!_licenseService.CanUseSplit())
+        {
+            MessageBox.Show(
+                "ページの削除・挿入機能は有償版の機能です。\n\n1か月の試用期間中は全機能をご利用いただけます。\n試用期間が終了した場合は、ライセンスの購入が必要です。",
+                "機能制限",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
+            return;
+        }
+
+        if (SelectedPdfFile == null)
+        {
+            MessageBox.Show("PDFファイルを選択してから実行してください。", "操作ヒント",
+                MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        var pageCount = await _pdfService.GetPageCountAsync(SelectedPdfFile.FilePath);
+        if (pageCount == 0)
+        {
+            MessageBox.Show("PDFファイルを開けませんでした。", "エラー",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+            return;
+        }
+
+        var dialog = new PageOperationsDialog(SelectedPdfFile.FilePath, pageCount);
+        if (dialog.ShowDialog() != true) return;
+
+        var targetPath = dialog.OutputPath ?? SelectedPdfFile.FilePath;
+        if (string.Equals(Path.GetFullPath(targetPath), Path.GetFullPath(SelectedPdfFile.FilePath), StringComparison.OrdinalIgnoreCase))
+            _undoRedoManager.PushUndo(SelectedPdfFile.FilePath);
+
+        StatusText = "処理中...";
+
+        var progress = new Progress<int>(percent =>
+        {
+            StatusText = $"処理中... {percent}%";
+        });
+
+        bool success;
+        if (dialog.SelectedMode == PageOperationsDialog.OperationMode.Delete)
+        {
+            success = await _pdfPageService.DeletePagesAsync(
+                SelectedPdfFile.FilePath,
+                dialog.PagesToDelete,
+                dialog.OutputPath,
+                progress);
+        }
+        else
+        {
+            success = await _pdfPageService.InsertPageAsync(
+                SelectedPdfFile.FilePath,
+                dialog.InsertPosition,
+                dialog.InsertSourcePath,
+                dialog.InsertSourcePageNumber,
+                dialog.OutputPath,
+                progress);
+        }
+
+        if (success)
+        {
+            MessageBox.Show("処理が完了しました。", "完了",
+                MessageBoxButton.OK, MessageBoxImage.Information);
+            StatusText = "ページ操作完了";
+
+            var outputPath = dialog.OutputPath ?? SelectedPdfFile.FilePath;
+            await ReapplyHeaderFooterIfNeeded(outputPath);
+            var outputDir = Path.GetDirectoryName(outputPath);
+            if (SelectedFolder != null && !string.IsNullOrEmpty(outputDir) && SelectedFolder.Path == outputDir)
+            {
+                await RefreshAsync();
+            }
+        }
+        else
+        {
+            MessageBox.Show("処理に失敗しました。", "エラー",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+            StatusText = "ページ操作失敗";
+        }
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(
+                $"ページ操作中にエラーが発生しました:\n\n{ex.GetType().Name}\n{ex.Message}\n\n{ex.StackTrace}",
+                "エラー",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
+            StatusText = "ページ操作エラー";
+            System.Diagnostics.Debug.WriteLine($"PageOperationsAsync: {ex}");
+        }
+    }
+
+    /// <summary>
+    /// 表示中のページを削除（紙を捨てる感覚）
+    /// </summary>
+    [RelayCommand]
+    private async Task DeleteCurrentPageAsync()
+    {
+        if (!_licenseService.CanUseSplit()) { ShowLicenseMessage(); return; }
+        if (SelectedPdfFile == null) { MessageBox.Show("PDFを選択してください。", "操作ヒント", MessageBoxButton.OK, MessageBoxImage.Information); return; }
+        if (TotalPages <= 1) { MessageBox.Show("最後の1ページは削除できません。", "操作ヒント", MessageBoxButton.OK, MessageBoxImage.Information); return; }
+
+        if (MessageBox.Show($"現在のページ（{CurrentPageNumber}ページ目）を削除しますか？", "確認", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes)
+            return;
+
+        _undoRedoManager.PushUndo(SelectedPdfFile.FilePath);
+        StatusText = "ページを削除中...";
+        var progress = new Progress<int>(p => StatusText = $"削除中... {p}%");
+        var success = await _pdfPageService.DeletePagesAsync(SelectedPdfFile.FilePath, new[] { CurrentPageNumber }, null, progress);
+
+        if (success)
+        {
+            StatusText = "削除完了";
+            await RefreshAsync();
+            await ReapplyHeaderFooterIfNeeded(SelectedPdfFile.FilePath);
+            var path = SelectedPdfFile?.FilePath;
+            if (path != null)
+            {
+                var newTotal = SelectedPdfFile?.PageCount ?? TotalPages - 1;
+                var pageToShow = Math.Min(CurrentPageNumber, Math.Max(1, newTotal));
+                await LoadPageAsync(path, pageToShow);
+            }
+        }
+        else
+        {
+            _undoRedoManager.CancelLastPush(SelectedPdfFile.FilePath);
+            MessageBox.Show("削除に失敗しました。", "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
+            StatusText = "削除失敗";
+        }
+    }
+
+    /// <summary>
+    /// 表示中のページの前にPDFを挿入（ドロップ時に呼ばれる）
+    /// </summary>
+    /// <param name="pdfFilePath">挿入するPDFのパス</param>
+    /// <param name="targetPdfPath">挿入先のPDFパス（省略時は SelectedPdfFile）</param>
+    public async Task InsertPdfAtCurrentPageAsync(string pdfFilePath, string? targetPdfPath = null)
+    {
+        if (!_licenseService.CanUseSplit()) { ShowLicenseMessage(); return; }
+        var target = !string.IsNullOrEmpty(targetPdfPath)
+            ? PdfFiles.FirstOrDefault(f => string.Equals(f.FilePath, targetPdfPath, StringComparison.OrdinalIgnoreCase))
+            : SelectedPdfFile;
+        if (target == null) return;
+        if (string.Equals(Path.GetFullPath(pdfFilePath), Path.GetFullPath(target.FilePath), StringComparison.OrdinalIgnoreCase))
+        {
+            MessageBox.Show("同じファイルを挿入することはできません。", "操作ヒント", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        _undoRedoManager.PushUndo(target.FilePath);
+        StatusText = "PDFを挿入中...";
+        var progress = new Progress<int>(p => StatusText = $"挿入中... {p}%");
+        var success = await _pdfPageService.InsertPdfAsync(target.FilePath, CurrentPageNumber, pdfFilePath, null, progress);
+
+        if (success)
+        {
+            StatusText = "挿入完了";
+            await RefreshAsync();
+            await ReapplyHeaderFooterIfNeeded(target.FilePath);
+            await LoadPageAsync(target.FilePath, CurrentPageNumber);
+        }
+        else
+        {
+            _undoRedoManager.CancelLastPush(target.FilePath);
+            MessageBox.Show("挿入に失敗しました。", "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
+            StatusText = "挿入失敗";
+        }
+    }
+
+    private void ShowLicenseMessage()
+    {
+        MessageBox.Show("ページ操作機能は有償版の機能です。\n試用期間中は全機能をご利用いただけます。", "機能制限", MessageBoxButton.OK, MessageBoxImage.Information);
+    }
+
     /// <summary>
     /// サムネイルの指定ページを読み込む
     /// </summary>
@@ -1373,6 +1633,7 @@ public partial class MainWindowViewModel : ObservableObject
 
         if (fileInfo == null) return;
 
+        _undoRedoManager.PushUndo(fileInfo.FilePath);
         StatusText = "PDFを回転中...";
         var success = await _pdfRotateService.RotatePageAsync(fileInfo.FilePath, pageNumber, rotationDegrees);
         
@@ -1394,6 +1655,7 @@ public partial class MainWindowViewModel : ObservableObject
         }
         else
         {
+            _undoRedoManager.CancelLastPush(fileInfo.FilePath);
             StatusText = "PDFの回転に失敗しました";
             MessageBox.Show("PDFの回転に失敗しました。", "エラー",
                 MessageBoxButton.OK, MessageBoxImage.Error);
@@ -1439,6 +1701,7 @@ public partial class MainWindowViewModel : ObservableObject
             pageToRotate = 1;
         }
 
+        _undoRedoManager.PushUndo(SelectedPdfFile.FilePath);
         StatusText = "PDFを回転中...";
         var success = await _pdfRotateService.RotatePageAsync(SelectedPdfFile.FilePath, pageToRotate, rotationDegrees);
         
@@ -1468,6 +1731,7 @@ public partial class MainWindowViewModel : ObservableObject
         }
         else
         {
+            _undoRedoManager.CancelLastPush(SelectedPdfFile.FilePath);
             StatusText = "PDFの回転に失敗しました";
             MessageBox.Show("PDFの回転に失敗しました。", "エラー",
                 MessageBoxButton.OK, MessageBoxImage.Error);
@@ -1511,6 +1775,7 @@ public partial class MainWindowViewModel : ObservableObject
 
         try
         {
+            _undoRedoManager.PushUndo(SelectedPdfFile.FilePath);
             StatusText = "PDFを回転中...";
             
             // デバッグ出力
@@ -1554,6 +1819,7 @@ public partial class MainWindowViewModel : ObservableObject
             }
             else
             {
+                _undoRedoManager.CancelLastPush(SelectedPdfFile.FilePath);
                 StatusText = "PDFの回転に失敗しました";
                 var errorMessage = "PDFの回転に失敗しました。\n\n";
                 errorMessage += "考えられる原因:\n";
@@ -1567,6 +1833,7 @@ public partial class MainWindowViewModel : ObservableObject
         }
         catch (Exception ex)
         {
+            _undoRedoManager.CancelLastPush(SelectedPdfFile.FilePath);
             StatusText = "PDFの回転に失敗しました";
             
             // 詳細なエラー情報をログに出力
@@ -1686,6 +1953,101 @@ public partial class MainWindowViewModel : ObservableObject
         {
             MessageBox.Show("ファイルの貼り付けに失敗しました。", "エラー",
                 MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    /// <summary>
+    /// 指定フォルダにファイルをコピー（ドラッグ＆ドロップ用）
+    /// </summary>
+    public async Task CopyFilesToFolderAsync(IEnumerable<string> sourcePaths, string targetFolderPath)
+    {
+        if (string.IsNullOrEmpty(targetFolderPath) || !Directory.Exists(targetFolderPath))
+            return;
+
+        var copiedCount = 0;
+        foreach (var sourcePath in sourcePaths)
+        {
+            if (!File.Exists(sourcePath)) continue;
+
+            var fileName = Path.GetFileName(sourcePath);
+            var targetPath = Path.Combine(targetFolderPath, fileName);
+
+            if (File.Exists(targetPath))
+            {
+                var nameWithoutExt = Path.GetFileNameWithoutExtension(fileName);
+                var ext = Path.GetExtension(fileName);
+                int counter = 1;
+                do
+                {
+                    fileName = $"{nameWithoutExt} ({counter}){ext}";
+                    targetPath = Path.Combine(targetFolderPath, fileName);
+                    counter++;
+                } while (File.Exists(targetPath));
+            }
+
+            try
+            {
+                File.Copy(sourcePath, targetPath, false);
+                copiedCount++;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"ファイルコピーエラー: {ex.Message}");
+            }
+        }
+
+        if (copiedCount > 0)
+        {
+            StatusText = $"{copiedCount}個のファイルをコピーしました";
+            await RefreshAsync();
+        }
+    }
+
+    /// <summary>
+    /// 指定フォルダにファイルを移動（コピー後に元ファイルを削除）
+    /// </summary>
+    public async Task MoveFilesToFolderAsync(IEnumerable<string> sourcePaths, string targetFolderPath)
+    {
+        if (string.IsNullOrEmpty(targetFolderPath) || !Directory.Exists(targetFolderPath))
+            return;
+
+        var movedCount = 0;
+        foreach (var sourcePath in sourcePaths)
+        {
+            if (!File.Exists(sourcePath)) continue;
+
+            var fileName = Path.GetFileName(sourcePath);
+            var targetPath = Path.Combine(targetFolderPath, fileName);
+
+            if (File.Exists(targetPath))
+            {
+                var nameWithoutExt = Path.GetFileNameWithoutExtension(fileName);
+                var ext = Path.GetExtension(fileName);
+                int counter = 1;
+                do
+                {
+                    fileName = $"{nameWithoutExt} ({counter}){ext}";
+                    targetPath = Path.Combine(targetFolderPath, fileName);
+                    counter++;
+                } while (File.Exists(targetPath));
+            }
+
+            try
+            {
+                File.Copy(sourcePath, targetPath, false);
+                File.Delete(sourcePath);
+                movedCount++;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"ファイル移動エラー: {ex.Message}");
+            }
+        }
+
+        if (movedCount > 0)
+        {
+            StatusText = $"{movedCount}個のファイルを移動しました";
+            await RefreshAsync();
         }
     }
 

@@ -55,6 +55,11 @@ public class LicenseInfo
     public DateTime? NextVerificationDate { get; set; }
 
     /// <summary>
+    /// 購入時のメジャーバージョン（買い切り版のみ。サブスクはnullで全バージョン対応）
+    /// </summary>
+    public string? PurchasedVersion { get; set; }
+
+    /// <summary>
     /// 試用期間の残り日数を取得
     /// </summary>
     public int GetRemainingTrialDays()

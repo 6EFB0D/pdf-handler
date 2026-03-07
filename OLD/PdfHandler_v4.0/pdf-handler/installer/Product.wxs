@@ -1,0 +1,169 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+  <!-- 製品定義 -->
+  <Product Id="*" 
+           Name="PDFハンドラ" 
+           Language="1041" 
+           Version="4.0.0.0" 
+           Manufacturer="Goplan" 
+           UpgradeCode="44c10202-84c8-491e-b015-cc662585ef4a">
+    
+    <!-- パッケージ定義 -->
+    <Package InstallerVersion="200" 
+             Compressed="yes" 
+             InstallScope="perMachine"
+             Description="PDFハンドラ v4.0.0 インストーラー"
+             Comments="ファイルサーバ上のPDFファイルを効率的に管理・編集"
+             Manufacturer="Goplan" />
+
+    <!-- アップグレード設定 -->
+    <MajorUpgrade DowngradeErrorMessage="新しいバージョンが既にインストールされています。" />
+    
+    <!-- メディア設定 -->
+    <MediaTemplate EmbedCab="yes" />
+
+    <!-- アイコン設定 -->
+    <Icon Id="ProductIcon" SourceFile="PdfHandler.ico" />
+    <Property Id="ARPPRODUCTICON" Value="ProductIcon" />
+    
+    <!-- プログラムと機能での表示設定 -->
+    <Property Id="ARPHELPLINK" Value="https://github.com/6EFB0D/pdf-handler" />
+    <Property Id="ARPURLINFOABOUT" Value="https://github.com/6EFB0D/pdf-handler" />
+    <Property Id="ARPNOREPAIR" Value="yes" Secure="yes" />
+    
+    <!-- 機能定義 -->
+    <Feature Id="ProductFeature" Title="PDFハンドラ" Level="1">
+      <ComponentGroupRef Id="ProductComponents" />
+      <ComponentRef Id="ApplicationShortcut" />
+      <ComponentRef Id="DesktopShortcut" />
+    </Feature>
+  </Product>
+
+  <!-- フラグメント: ディレクトリ構造 -->
+  <Fragment>
+    <Directory Id="TARGETDIR" Name="SourceDir">
+      <!-- Program Files -->
+      <Directory Id="ProgramFiles64Folder">
+        <Directory Id="INSTALLFOLDER" Name="PDFハンドラ" />
+      </Directory>
+      
+      <!-- スタートメニュー -->
+      <Directory Id="ProgramMenuFolder">
+        <Directory Id="ApplicationProgramsFolder" Name="PDFハンドラ" />
+      </Directory>
+      
+      <!-- デスクトップ -->
+      <Directory Id="DesktopFolder" Name="Desktop" />
+    </Directory>
+  </Fragment>
+
+  <!-- フラグメント: コンポーネント -->
+  <Fragment>
+    <ComponentGroup Id="ProductComponents" Directory="INSTALLFOLDER">
+      <!-- メイン実行ファイル -->
+      <Component Id="MainExecutable" Guid="f8601ac9-d077-4a59-a61b-8f32b525c77f">
+        <File Id="PdfHandlerExe" 
+              Source="$(var.SourceDir)\PdfHandler.UI.exe" 
+              KeyPath="yes" />
+      </Component>
+      
+      <!-- DLLファイル -->
+      <Component Id="CoreDll" Guid="783b484a-098c-4d92-85ea-33d78743e5c7">
+        <File Source="$(var.SourceDir)\PdfHandler.Core.dll" />
+      </Component>
+      
+      <Component Id="InfrastructureDll" Guid="014dbc8b-81c5-42df-8b32-b6ea1c9a66fb">
+        <File Source="$(var.SourceDir)\PdfHandler.Infrastructure.dll" />
+      </Component>
+      
+      <Component Id="PdfSharpDll" Guid="9202896a-74d3-443e-916c-c35b88966e71">
+        <File Source="$(var.SourceDir)\PdfSharp.dll" />
+      </Component>
+      
+      <Component Id="MvvmDll" Guid="319ce317-31a7-4b1d-8e3d-1e10293a77fd">
+        <File Source="$(var.SourceDir)\CommunityToolkit.Mvvm.dll" />
+      </Component>
+      
+      <Component Id="DependencyInjectionDll" Guid="09e2485a-5d38-4e89-9ddb-b52b4e39261a">
+        <File Source="$(var.SourceDir)\Microsoft.Extensions.DependencyInjection.dll" />
+      </Component>
+      
+      <Component Id="DependencyInjectionAbstractionsDll" Guid="1513a154-317f-437f-b8f4-1038e41334b5">
+        <File Source="$(var.SourceDir)\Microsoft.Extensions.DependencyInjection.Abstractions.dll" />
+      </Component>
+      
+      <Component Id="SystemTextJsonDll" Guid="af2a8c46-df65-4a19-a2b6-e907976b087e">
+        <File Source="$(var.SourceDir)\System.Text.Json.dll" />
+      </Component>
+      
+      <!-- Resourcesフォルダ -->
+      <Component Id="ResourcesLegal" Guid="e722bd37-3178-4fe5-9d0d-387a6e46031c">
+        <CreateFolder Directory="INSTALLFOLDER" />
+        <File Source="$(var.SourceDir)\Resources\Legal\TERMS_OF_USE.txt" />
+        <File Source="$(var.SourceDir)\Resources\Legal\PRIVACY_POLICY.txt" />
+        <File Source="$(var.SourceDir)\Resources\Legal\OPEN_SOURCE_LICENSES.txt" />
+      </Component>
+      
+      <Component Id="ResourcesDocs" Guid="34a8696f-6da3-41bd-839e-b0443f812701">
+        <CreateFolder Directory="INSTALLFOLDER" />
+        <File Source="$(var.SourceDir)\Resources\Docs\USER_MANUAL.txt" />
+      </Component>
+      
+      <!-- ライセンスファイル -->
+      <Component Id="LicenseFile" Guid="3c5047be-5d3b-491f-83d8-e6211af88f88">
+        <File Source="$(var.SourceDir)\LICENSE" />
+      </Component>
+      
+      <!-- README -->
+      <Component Id="ReadmeFile" Guid="36e2fd8c-78d6-4ee1-a8b4-89db3d92f810">
+        <File Source="$(var.SourceDir)\README.txt" />
+      </Component>
+    </ComponentGroup>
+
+    <!-- スタートメニューショートカット -->
+    <DirectoryRef Id="ApplicationProgramsFolder">
+      <Component Id="ApplicationShortcut" Guid="3e392165-5f73-448e-b580-b0bea07d86cd">
+        <Shortcut Id="ApplicationStartMenuShortcut"
+                  Name="PDFハンドラ"
+                  Description="ファイルサーバ上のPDFファイルを管理・編集"
+                  Target="[INSTALLFOLDER]PdfHandler.UI.exe"
+                  WorkingDirectory="INSTALLFOLDER"
+                  Icon="ProductIcon" />
+        
+        <!-- アンインストールショートカット -->
+        <Shortcut Id="UninstallProduct"
+                  Name="PDFハンドラをアンインストール"
+                  Description="PDFハンドラをアンインストールします"
+                  Target="[SystemFolder]msiexec.exe"
+                  Arguments="/x [ProductCode]" />
+        
+        <RemoveFolder Id="ApplicationProgramsFolder" On="uninstall" />
+        <RegistryValue Root="HKCU" 
+                       Key="Software\Goplan\PDFハンドラ" 
+                       Name="installed" 
+                       Type="integer" 
+                       Value="1" 
+                       KeyPath="yes" />
+      </Component>
+    </DirectoryRef>
+
+    <!-- デスクトップショートカット -->
+    <DirectoryRef Id="DesktopFolder">
+      <Component Id="DesktopShortcut" Guid="5a7e01c3-cf51-4018-bab4-f2ded03b1e0e">
+        <Shortcut Id="DesktopShortcut"
+                  Name="PDFハンドラ"
+                  Description="ファイルサーバ上のPDFファイルを管理・編集"
+                  Target="[INSTALLFOLDER]PdfHandler.UI.exe"
+                  WorkingDirectory="INSTALLFOLDER"
+                  Icon="ProductIcon" />
+        
+        <RegistryValue Root="HKCU" 
+                       Key="Software\Goplan\PDFハンドラ" 
+                       Name="desktop" 
+                       Type="integer" 
+                       Value="1" 
+                       KeyPath="yes" />
+      </Component>
+    </DirectoryRef>
+  </Fragment>
+</Wix>

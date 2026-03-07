@@ -12,8 +12,19 @@ Write-Host ""
 # プロジェクトルートに移動
 Set-Location $PSScriptRoot\..
 
-# 1. create-checkout-session のデプロイ（JWT検証無効: 401エラー対策）
-Write-Host "1/3: create-checkout-session をデプロイ中..." -ForegroundColor Yellow
+# 1. ping のデプロイ（Heartbeat用、7日間の一時停止を防ぐ）
+Write-Host "1/4: ping をデプロイ中..." -ForegroundColor Yellow
+npx supabase functions deploy ping --project-ref $PROJECT_REF --no-verify-jwt
+if ($LASTEXITCODE -eq 0) {
+    Write-Host "✅ ping デプロイ成功" -ForegroundColor Green
+} else {
+    Write-Host "❌ ping デプロイ失敗" -ForegroundColor Red
+    exit 1
+}
+Write-Host ""
+
+# 2. create-checkout-session のデプロイ（JWT検証無効: 401エラー対策）
+Write-Host "2/4: create-checkout-session をデプロイ中..." -ForegroundColor Yellow
 npx supabase functions deploy create-checkout-session --project-ref $PROJECT_REF --no-verify-jwt
 if ($LASTEXITCODE -eq 0) {
     Write-Host "✅ create-checkout-session デプロイ成功" -ForegroundColor Green
@@ -23,8 +34,8 @@ if ($LASTEXITCODE -eq 0) {
 }
 Write-Host ""
 
-# 2. verify-license のデプロイ（JWT検証無効: 401エラー対策）
-Write-Host "2/3: verify-license をデプロイ中..." -ForegroundColor Yellow
+# 3. verify-license のデプロイ（JWT検証無効: 401エラー対策）
+Write-Host "3/4: verify-license をデプロイ中..." -ForegroundColor Yellow
 npx supabase functions deploy verify-license --project-ref $PROJECT_REF --no-verify-jwt
 if ($LASTEXITCODE -eq 0) {
     Write-Host "✅ verify-license デプロイ成功" -ForegroundColor Green
@@ -34,8 +45,8 @@ if ($LASTEXITCODE -eq 0) {
 }
 Write-Host ""
 
-# 3. stripe-webhook のデプロイ（JWT認証無効: 401エラー対策）
-Write-Host "3/3: stripe-webhook をデプロイ中..." -ForegroundColor Yellow
+# 4. stripe-webhook のデプロイ（JWT認証無効: 401エラー対策）
+Write-Host "4/4: stripe-webhook をデプロイ中..." -ForegroundColor Yellow
 npx supabase functions deploy stripe-webhook --project-ref $PROJECT_REF --no-verify-jwt
 if ($LASTEXITCODE -eq 0) {
     Write-Host "✅ stripe-webhook デプロイ成功" -ForegroundColor Green

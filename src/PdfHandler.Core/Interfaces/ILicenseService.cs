@@ -62,6 +62,12 @@ public interface ILicenseService
     bool IsLicenseValid();
 
     /// <summary>
+    /// 現在のアプリバージョンがライセンスで利用可能かどうかを判定
+    /// （買い切り版: 同一メジャー以内、サブスク: 全バージョン）
+    /// </summary>
+    bool IsVersionCompatible();
+
+    /// <summary>
     /// 試用期間が有効かどうかを判定
     /// </summary>
     bool IsTrialValid();

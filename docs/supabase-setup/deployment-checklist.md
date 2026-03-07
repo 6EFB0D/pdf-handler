@@ -49,6 +49,9 @@ Supabaseダッシュボード → Settings → Edge Functions → Secrets で以
 - [ ] `STRIPE_PRICE_ID_SUBSCRIPTION_PREMIUM` （PremiumサブスクのPrice ID）
 - [ ] `ENABLE_PREMIUM_PLAN` （`true`または`false`）
 - [ ] `APP_URL` （アプリケーションのURL）
+- [ ] `RESEND_API_KEY` （ライセンスメール送信用、Resend の API キー）
+- [ ] `LICENSE_EMAIL_FROM` （送信元メール、例: `PDFハンドラ <noreply@yourdomain.com>`）
+- [ ] `LICENSE_PURCHASED_MAJOR_VERSION` （買い切り発行時のメジャーバージョン、省略時は 1）
 
 ### 4. Supabase CLIの確認
 

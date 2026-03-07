@@ -9,6 +9,8 @@ using PdfHandler.Infrastructure.Services;
 using PdfHandler.UI.ViewModels;
 using PdfHandler.UI.Views;
 using System;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Windows;
 
 namespace PdfHandler.UI;
@@ -19,10 +21,50 @@ namespace PdfHandler.UI;
 public partial class App : Application
 {
     private ServiceProvider? _serviceProvider;
+    private static Mutex? _singleInstanceMutex;
 
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+
+        // 単一インスタンス制限（二重起動・ロックの防止）
+        const string mutexName = "Goplan.PDFHandler.SingleInstance";
+        _singleInstanceMutex = new Mutex(true, mutexName, out bool createdNew);
+        if (!createdNew)
+        {
+            MessageBox.Show(
+                "PDFハンドラは既に起動しています。\n別のウィンドウで開いている場合は、そちらをご利用ください。",
+                "二重起動",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
+            Shutdown();
+            return;
+        }
+
+        // 未処理例外をキャッチ（アプリ終了の原因特定用）
+        DispatcherUnhandledException += (s, args) =>
+        {
+            var msg = $"未処理の例外が発生しました:\n\n{args.Exception.GetType().Name}\n{args.Exception.Message}\n\n{args.Exception.StackTrace}";
+            MessageBox.Show(msg, "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
+            System.Diagnostics.Debug.WriteLine(msg);
+            args.Handled = true; // アプリ終了を防ぐ
+        };
+        AppDomain.CurrentDomain.UnhandledException += (s, args) =>
+        {
+            if (args.ExceptionObject is Exception ex)
+            {
+                var msg = $"[UnhandledException] {ex.GetType().Name}: {ex.Message}\n{ex.StackTrace}";
+                MessageBox.Show(msg, "致命的エラー", MessageBoxButton.OK, MessageBoxImage.Error);
+                System.Diagnostics.Debug.WriteLine(msg);
+            }
+        };
+        TaskScheduler.UnobservedTaskException += (s, args) =>
+        {
+            var msg = $"[UnobservedTaskException] {args.Exception?.GetType().Name}: {args.Exception?.Message}";
+            MessageBox.Show(msg, "タスク例外", MessageBoxButton.OK, MessageBoxImage.Warning);
+            System.Diagnostics.Debug.WriteLine(msg);
+            args.SetObserved();
+        };
 
         try
         {
@@ -75,6 +117,8 @@ public partial class App : Application
         services.AddSingleton<IFavoriteService, FavoriteService>();
         services.AddSingleton<ILicenseService>(sp => new LicenseService(sp.GetRequiredService<AppSettings>()));
         services.AddSingleton<IPdfRotateService, PdfRotateService>();
+        services.AddSingleton<IPdfPageService, PdfPageService>();
+        services.AddSingleton<IHeaderFooterService, HeaderFooterService>();
         services.AddSingleton<IWorkFolderService, WorkFolderService>();
         services.AddSingleton<IBinderService, BinderService>();
         services.AddSingleton<IPrintToPdfService, PrintToPdfService>();
@@ -98,7 +142,21 @@ public partial class App : Application
 
     protected override void OnExit(ExitEventArgs e)
     {
-        _serviceProvider?.Dispose();
+        try
+        {
+            _singleInstanceMutex?.ReleaseMutex();
+        }
+        catch { /* 既に解放済みの可能性 */ }
+        try
+        {
+            _singleInstanceMutex?.Dispose();
+        }
+        catch { }
+        try
+        {
+            _serviceProvider?.Dispose();
+        }
+        catch { }
         base.OnExit(e);
     }
 }

@@ -140,6 +140,30 @@ Deno.serve(async (req) => {
   }
 });
 
+/**
+ * ライセンスキーを生成（形式: PDFH-XXXX-28文字）
+ * XXXX: P101(買い切りv1), P102(買い切りv2), S100(サブStandard), S200(サブPremium)
+ */
+function generateLicenseKey(plan: string, isSubscription: boolean): string {
+  let typeCode: string;
+  let verCode: string;
+  if (isSubscription) {
+    typeCode = plan === "Premium" ? "S2" : "S1";
+    verCode = "00"; // サブスクは全バージョン
+  } else {
+    typeCode = "P1"; // 買い切りは StandardPurchased のみ
+    const majorVer = Deno.env.get("LICENSE_PURCHASED_MAJOR_VERSION") || "1";
+    verCode = majorVer.padStart(2, "0"); // 01, 02, ...
+  }
+  const formCode = `${typeCode}${verCode}`; // P101, S100, S200
+
+  // 28文字のシリアル（16進数大文字）
+  const uuidHex = crypto.randomUUID().replace(/-/g, "").toUpperCase();
+  const serial = uuidHex.substring(0, 28);
+
+  return `PDFH-${formCode}-${serial}`;
+}
+
 async function handleCheckoutCompleted(
   supabase: any,
   session: Stripe.Checkout.Session
@@ -165,9 +189,6 @@ async function handleCheckoutCompleted(
     }
   }
 
-  // ライセンスキーを生成
-  const licenseKey = `PDFH-${crypto.randomUUID().toUpperCase().replace(/-/g, "")}`;
-
   // プランをデータベース形式に変換
   let dbPlan: string;
   if (plan === "StandardPurchased") {
@@ -179,6 +200,9 @@ async function handleCheckoutCompleted(
   } else {
     throw new Error(`Invalid plan: ${plan}`);
   }
+
+  // ライセンスキーを生成（形式: PDFH-XXXX-28文字）
+  const licenseKey = generateLicenseKey(plan, isSubscription);
 
   // ライセンスを作成
   const licenseData: any = {
@@ -197,9 +221,12 @@ async function handleCheckoutCompleted(
     const renewalDate = new Date();
     renewalDate.setFullYear(renewalDate.getFullYear() + 1);
     licenseData.subscription_renewal_date = renewalDate.toISOString();
+    // サブスクは全バージョン対応のため purchased_version は null
   } else {
-    // 買い切り版は有効期限なし
+    // 買い切り版は有効期限なし、purchased_version を形態コードから設定
     licenseData.expiration_date = null;
+    const majorVer = Deno.env.get("LICENSE_PURCHASED_MAJOR_VERSION") || "1";
+    licenseData.purchased_version = majorVer;
   }
 
   const { data: license, error: licenseError } = await supabase
@@ -228,8 +255,75 @@ async function handleCheckoutCompleted(
     });
   }
 
-  // TODO: ライセンスキーをメールで送信（SendGrid、Resend等を使用）
-  console.log(`License created: ${licenseKey} for ${licenseData.user_email}`);
+  // ライセンスキーをメールで送信（RESEND_API_KEY が設定されている場合）
+  const userEmail = licenseData.user_email;
+  if (userEmail && Deno.env.get("RESEND_API_KEY")) {
+    try {
+      await sendLicenseEmail(userEmail, licenseKey, dbPlan, isSubscription);
+      console.log(`License email sent to ${userEmail}`);
+    } catch (emailErr) {
+      console.error("License email send failed:", emailErr);
+      // メール送信失敗でもライセンス作成は成功しているため、処理は継続
+    }
+  } else {
+    console.log(`License created: ${licenseKey} for ${userEmail || "(no email)"}`);
+  }
+}
+
+/**
+ * Resend API でライセンスキーをメール送信
+ * 環境変数: RESEND_API_KEY, LICENSE_EMAIL_FROM（例: PDFハンドラ <noreply@yourdomain.com>）
+ */
+async function sendLicenseEmail(
+  toEmail: string,
+  licenseKey: string,
+  plan: string,
+  isSubscription: boolean
+): Promise<void> {
+  const apiKey = Deno.env.get("RESEND_API_KEY");
+  const from = Deno.env.get("LICENSE_EMAIL_FROM") || "PDFハンドラ <onboarding@resend.dev>";
+
+  const planLabel = plan === "purchased"
+    ? "Standard版（買い切り）"
+    : plan === "subscription_standard"
+    ? "Standard版（サブスクリプション）"
+    : "Premium版（サブスクリプション）";
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>ライセンスキー</title></head>
+<body style="font-family: 'Meiryo', sans-serif; line-height: 1.6; color: #333;">
+  <h2>PDFハンドラ ライセンスキー</h2>
+  <p>ご購入ありがとうございます。</p>
+  <p><strong>プラン:</strong> ${planLabel}</p>
+  <p><strong>ライセンスキー:</strong></p>
+  <p style="font-size: 18px; font-family: monospace; background: #f5f5f5; padding: 12px; border-radius: 4px;">${licenseKey}</p>
+  <p>アプリ内で「ヘルプ」→「ライセンス」→「ライセンスキーを入力」から上記キーを入力してください。</p>
+  ${isSubscription ? "<p>サブスクリプションは年額更新です。解約はStripeのカスタマーポータルからいつでも可能です。</p>" : ""}
+  <hr style="margin: 24px 0; border: none; border-top: 1px solid #ddd;">
+  <p style="font-size: 12px; color: #666;">このメールは自動送信されています。ご不明な点はサポートまでお問い合わせください。</p>
+</body>
+</html>`;
+
+  const res = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      from,
+      to: [toEmail],
+      subject: "【PDFハンドラ】ライセンスキー",
+      html,
+    }),
+  });
+
+  if (!res.ok) {
+    const errBody = await res.text();
+    throw new Error(`Resend API error ${res.status}: ${errBody}`);
+  }
 }
 
 async function handleSubscriptionUpdated(

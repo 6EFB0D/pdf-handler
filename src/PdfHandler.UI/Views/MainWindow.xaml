@@ -6,7 +6,13 @@
         mc:Ignorable="d"
         Title="PDFハンドラ" Height="700" Width="1200"
         WindowStartupLocation="CenterScreen"
-        Loaded="MainWindow_Loaded">
+        Loaded="MainWindow_Loaded"
+        Closing="MainWindow_Closing">
+    <Window.InputBindings>
+        <KeyBinding Key="Z" Modifiers="Ctrl" Command="{Binding UndoCommand}"/>
+        <KeyBinding Key="Y" Modifiers="Ctrl" Command="{Binding RedoCommand}"/>
+        <KeyBinding Key="Z" Modifiers="Ctrl+Shift" Command="{Binding RedoCommand}"/>
+    </Window.InputBindings>
     
     <Window.Resources>
         <!-- ボタンスタイル -->
@@ -36,6 +42,9 @@
                 <MenuItem Header="終了(_X)" Click="Exit_Click"/>
             </MenuItem>
             <MenuItem Header="編集(_E)">
+                <MenuItem Header="元に戻す(_U)" Command="{Binding UndoCommand}" InputGestureText="Ctrl+Z"/>
+                <MenuItem Header="やり直し(_R)" Command="{Binding RedoCommand}" InputGestureText="Ctrl+Y"/>
+                <Separator/>
                 <MenuItem Header="削除(_D)" Click="DeleteFiles_Click" InputGestureText="Delete"/>
                 <Separator/>
                 <MenuItem Header="すべて選択(_A)" InputGestureText="Ctrl+A"/>
@@ -63,6 +72,8 @@
             <MenuItem Header="ツール(_T)">
                 <MenuItem Header="PDFを結合(_M)..." Click="MergePdfs_Click" InputGestureText="Ctrl+M"/>
                 <MenuItem Header="PDFを分割(_S)..." Command="{Binding SplitPdfCommand}"/>
+                <MenuItem Header="ページの削除・挿入(_D)..." Command="{Binding PageOperationsCommand}"/>
+                <MenuItem Header="ヘッダ・フッター(_H)..." Click="HeaderFooter_Click"/>
                 <Separator/>
                 <MenuItem Header="PDFを回転(_R)">
                     <MenuItem Header="現在のページを右に90度回転（時計回り）" Command="{Binding RotatePdfCommand}" CommandParameter="90"/>
@@ -88,12 +99,17 @@
 
         <!-- ツールバー -->
         <ToolBar Grid.Row="1" Height="40">
+            <Button Content="↩ 元に戻す" Command="{Binding UndoCommand}" Style="{StaticResource ToolbarButtonStyle}" ToolTip="元に戻す (Ctrl+Z)"/>
+            <Button Content="↪ やり直し" Command="{Binding RedoCommand}" Style="{StaticResource ToolbarButtonStyle}" ToolTip="やり直し (Ctrl+Y)"/>
+            <Separator/>
             <Button Content="🔄 更新" Command="{Binding RefreshCommand}" Style="{StaticResource ToolbarButtonStyle}" ToolTip="ファイル一覧を更新"/>
             <Button Content="📁 開く" Command="{Binding OpenFolderCommand}" Style="{StaticResource ToolbarButtonStyle}" ToolTip="フォルダを開く"/>
             <Button Content="🗑️ 削除" Click="DeleteFiles_Click" Style="{StaticResource ToolbarButtonStyle}" ToolTip="選択したファイルを削除（複数選択可）"/>
             <Separator/>
             <Button Content="🔗 結合" Click="MergePdfs_Click" Style="{StaticResource ToolbarButtonStyle}" ToolTip="複数のPDFを結合（Ctrl+クリックで複数選択）"/>
             <Button Content="✂️ 分割" Command="{Binding SplitPdfCommand}" Style="{StaticResource ToolbarButtonStyle}" ToolTip="PDFを分割"/>
+            <Button Content="📄 ページ編集" Command="{Binding PageOperationsCommand}" Style="{StaticResource ToolbarButtonStyle}" ToolTip="ページの削除・挿入"/>
+            <Button Content="📋 ヘッダ・フッター" Click="HeaderFooter_Click" Style="{StaticResource ToolbarButtonStyle}" ToolTip="ヘッダ・フッターの挿入"/>
             <Separator/>
             <!-- 右回転ボタン（時計回り） -->
             <Button Command="{Binding RotateAllPagesCommand}" CommandParameter="90" Style="{StaticResource ToolbarButtonStyle}" ToolTip="選択したPDFの全ページを右に90度回転">
@@ -161,13 +177,16 @@
             </Grid.ColumnDefinitions>
 
             <!-- 左ペイン: フォルダツリー -->
-            <Border Grid.Column="0" BorderBrush="#CCCCCC" BorderThickness="1" Margin="5">
+            <Border Grid.Column="0" BorderBrush="#CCCCCC" BorderThickness="1" Margin="5" ToolTip="PDFをドラッグ&amp;ドロップでフォルダにコピー">
                 <TreeView x:Name="FolderTreeView"
                           SelectedItemChanged="TreeView_SelectedItemChanged"
                           ContextMenuOpening="FolderTreeView_ContextMenuOpening">
                     <TreeView.ItemContainerStyle>
                         <Style TargetType="TreeViewItem">
+                            <Setter Property="AllowDrop" Value="True"/>
                             <EventSetter Event="Expanded" Handler="TreeViewItem_Expanded"/>
+                            <EventSetter Event="PreviewDragOver" Handler="FolderTreeViewItem_DragOver"/>
+                            <EventSetter Event="PreviewDrop" Handler="FolderTreeViewItem_Drop"/>
                         </Style>
                     </TreeView.ItemContainerStyle>
                     <TreeView.ItemTemplate>
@@ -222,8 +241,8 @@
                                           x:Name="Rotate180MenuItem"
                                           Click="Rotate180MenuItem_Click"/>
                                 <Separator/>
-                                <MenuItem Header="コピー" Command="{Binding DataContext.CopyFilesCommand, RelativeSource={RelativeSource AncestorType=ListView}}" InputGestureText="Ctrl+C"/>
-                                <MenuItem Header="ペースト" Command="{Binding DataContext.PasteFilesCommand, RelativeSource={RelativeSource AncestorType=ListView}}" InputGestureText="Ctrl+V"/>
+                                <MenuItem Header="コピー" Click="CopyFiles_Click" InputGestureText="Ctrl+C"/>
+                                <MenuItem Header="ペースト" Click="PasteFiles_Click" InputGestureText="Ctrl+V"/>
                                 <Separator/>
                                 <MenuItem Header="削除" Click="DeleteFiles_Click" InputGestureText="Delete"/>
                             </ContextMenu>
@@ -239,7 +258,13 @@
                                             Margin="5">
                                     <Border BorderBrush="#CCCCCC" BorderThickness="1" 
                                             Height="{Binding DataContext.ThumbnailHeight, RelativeSource={RelativeSource AncestorType=ListView}}" 
-                                            Background="White">
+                                            Background="White"
+                                            MouseLeftButtonDown="ThumbnailItem_MouseLeftButtonDown"
+                                            MouseLeftButtonUp="ThumbnailItem_MouseLeftButtonUp"
+                                            MouseRightButtonDown="ThumbnailItem_MouseRightButtonDown"
+                                            MouseRightButtonUp="ThumbnailItem_MouseRightButtonUp"
+                                            MouseMove="ThumbnailItem_MouseMove"
+                                            ToolTip="左ドラッグ: プレビューに挿入／フォルダにコピー | 右ドラッグ: フォルダでコピー/移動を選択">
                                         <Grid>
                                             <Image Source="{Binding ThumbnailData, Converter={StaticResource ByteArrayToImageConverter}}" 
                                                    Stretch="Uniform"/>
@@ -337,6 +362,15 @@
                               KeyDown="FileListView_KeyDown"
                               Visibility="{Binding IsThumbnailView, Converter={StaticResource InverseBoolToVisibilityConverter}}"
                               ContextMenuOpening="FileListView_ContextMenuOpening">
+                        <ListView.ItemContainerStyle>
+                            <Style TargetType="ListViewItem">
+                                <EventSetter Event="PreviewMouseLeftButtonDown" Handler="FileListItem_PreviewMouseLeftButtonDown"/>
+                                <EventSetter Event="PreviewMouseLeftButtonUp" Handler="FileListItem_PreviewMouseLeftButtonUp"/>
+                                <EventSetter Event="PreviewMouseRightButtonDown" Handler="FileListItem_PreviewMouseRightButtonDown"/>
+                                <EventSetter Event="PreviewMouseRightButtonUp" Handler="FileListItem_PreviewMouseRightButtonUp"/>
+                                <EventSetter Event="PreviewMouseMove" Handler="FileListItem_PreviewMouseMove"/>
+                            </Style>
+                        </ListView.ItemContainerStyle>
                         <ListView.ContextMenu>
                             <ContextMenu x:Name="FileListContextMenu">
                                 <MenuItem Header="右に90度回転（時計回り）" 
@@ -349,8 +383,8 @@
                                           x:Name="Rotate180ListMenuItem"
                                           Click="Rotate180MenuItem_Click"/>
                                 <Separator/>
-                                <MenuItem Header="コピー" Command="{Binding DataContext.CopyFilesCommand, RelativeSource={RelativeSource AncestorType=ListView}}" InputGestureText="Ctrl+C"/>
-                                <MenuItem Header="ペースト" Command="{Binding DataContext.PasteFilesCommand, RelativeSource={RelativeSource AncestorType=ListView}}" InputGestureText="Ctrl+V"/>
+                                <MenuItem Header="コピー" Click="CopyFiles_Click" InputGestureText="Ctrl+C"/>
+                                <MenuItem Header="ペースト" Click="PasteFiles_Click" InputGestureText="Ctrl+V"/>
                                 <Separator/>
                                 <MenuItem Header="削除" Click="DeleteFiles_Click" InputGestureText="Delete"/>
                             </ContextMenu>
@@ -411,10 +445,14 @@
                             <Run Text="{Binding CurrentPageNumber}"/><Run Text="/"/><Run Text="{Binding TotalPages}"/>
                         </TextBlock>
                         <Button Content="▶️" Margin="5" Padding="5" Command="{Binding NextPageCommand}"/>
+                        <Separator/>
+                        <Button Content="🗑️ このページを削除" Margin="5" Padding="5" Command="{Binding DeleteCurrentPageCommand}" ToolTip="表示中のページを削除"/>
+                        <TextBlock Text="💡 PDFをドロップで挿入" VerticalAlignment="Center" Margin="10,0,0,0" Foreground="Gray" FontSize="11"/>
                     </StackPanel>
 
-                    <!-- プレビュー表示エリア -->
-                    <Border Grid.Row="1" Background="White">
+                    <!-- プレビュー表示エリア（PDFをドロップで挿入） -->
+                    <Border Grid.Row="1" Background="White" x:Name="PreviewDropTarget"
+                            AllowDrop="True" DragOver="Preview_DragOver" Drop="Preview_Drop">
                         <ScrollViewer x:Name="PreviewScrollViewer" 
                                       HorizontalScrollBarVisibility="Auto" 
                                       VerticalScrollBarVisibility="Auto">

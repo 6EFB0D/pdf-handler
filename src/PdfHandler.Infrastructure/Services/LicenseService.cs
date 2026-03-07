@@ -15,7 +15,7 @@ namespace PdfHandler.Infrastructure.Services;
 /// <summary>
 /// ライセンス管理サービスの実装
 /// </summary>
-public class LicenseService : ILicenseService
+public class LicenseService : ILicenseService, IDisposable
 {
     private readonly string _licenseFilePath;
     private LicenseInfo? _currentLicense;
@@ -198,7 +198,8 @@ public class LicenseService : ILicenseService
         try
         {
             var deviceName = Environment.MachineName;
-            var request = new { licenseKey = trimmedKey, hardwareId = _hardwareId, deviceName };
+            var appVersion = GetCurrentAppVersion();
+            var request = new { licenseKey = trimmedKey, hardwareId = _hardwareId, deviceName, appVersion };
             var json = JsonSerializer.Serialize(request);
             var content = new StringContent(json, Encoding.UTF8, "application/json");
 
@@ -234,6 +235,7 @@ public class LicenseService : ILicenseService
             license.NextVerificationDate = result.NextVerificationDate;
             license.ExpirationDate = result.ExpirationDate;
             license.SubscriptionRenewalDate = result.SubscriptionRenewalDate;
+            license.PurchasedVersion = result.PurchasedVersion;
 
             await SaveLicenseAsync(license);
             return true;
@@ -266,11 +268,26 @@ public class LicenseService : ILicenseService
     {
         public bool IsValid { get; set; }
         public string? Plan { get; set; }
+        public string? PurchasedVersion { get; set; }
         public DateTime? ExpirationDate { get; set; }
         public DateTime? SubscriptionRenewalDate { get; set; }
         public DateTime? LastVerificationDate { get; set; }
         public DateTime? NextVerificationDate { get; set; }
         public string? ErrorMessage { get; set; }
+    }
+
+    private static string GetCurrentAppVersion()
+    {
+        try
+        {
+            var assembly = System.Reflection.Assembly.GetExecutingAssembly();
+            var version = assembly.GetName().Version;
+            return $"{version?.Major ?? 0}.{version?.Minor ?? 0}.{version?.Build ?? 0}";
+        }
+        catch
+        {
+            return "1.0.0";
+        }
     }
 
     /// <summary>
@@ -458,6 +475,46 @@ public class LicenseService : ILicenseService
     }
 
     /// <summary>
+    /// 現在のアプリバージョンがライセンスで利用可能かどうかを判定
+    /// </summary>
+    public bool IsVersionCompatible()
+    {
+        var license = GetLicenseInfo();
+        if (license.Plan == LicensePlan.Trial)
+            return true;
+        if (license.Plan == LicensePlan.StandardSubscription || license.Plan == LicensePlan.Premium || license.Plan == LicensePlan.PremiumBYOK)
+            return true; // サブスクは全バージョン
+        if (license.Plan != LicensePlan.StandardPurchased)
+            return true;
+
+        // 買い切り版: 現在のメジャー <= 購入時のメジャー
+        var purchasedMajor = ParseMajorVersion(license.PurchasedVersion);
+        var currentMajor = GetCurrentAppMajorVersion();
+        return currentMajor <= purchasedMajor;
+    }
+
+    private static int ParseMajorVersion(string? version)
+    {
+        if (string.IsNullOrEmpty(version)) return 1; // 未設定は v1 扱い
+        if (int.TryParse(version.Trim().Split('.')[0], out var major))
+            return major;
+        return 1;
+    }
+
+    private static int GetCurrentAppMajorVersion()
+    {
+        try
+        {
+            var assembly = System.Reflection.Assembly.GetExecutingAssembly();
+            return assembly.GetName().Version?.Major ?? 1;
+        }
+        catch
+        {
+            return 1;
+        }
+    }
+
+    /// <summary>
     /// 試用期間が有効かどうかを判定
     /// </summary>
     public bool IsTrialValid()
@@ -577,6 +634,11 @@ public class LicenseService : ILicenseService
         // 現時点では簡易実装（常にtrueを返す）
         await Task.CompletedTask;
         return true;
+    }
+
+    public void Dispose()
+    {
+        _httpClient?.Dispose();
     }
 }
 
