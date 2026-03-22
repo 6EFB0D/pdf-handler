@@ -9,6 +9,7 @@
 | 1 | ライセンス発行後のメール自動配信 | [01_license-email-delivery.md](01_license-email-delivery.md) |
 | 2 | 返金を求められた際の処理方法 | [02_refund-processing.md](02_refund-processing.md) |
 | 3 | 領収証の発行（企業向け・個人情報保護） | [03_receipt-issuance.md](03_receipt-issuance.md) |
+| 4 | v1.1.0 アップグレード計画（バックアップ・ライセンス・価格変更） | [04_version-upgrade-v1.1.0-plan.md](04_version-upgrade-v1.1.0-plan.md) |
 
 ## 個人情報を公開しないための共通ポイント
 

@@ -3,8 +3,10 @@
 // Licensed under the MIT License. See LICENSE file in the project root for full license information.
 
 using PdfHandler.UI.ViewModels;
+using PdfHandler.Infrastructure.Configuration;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Windows;
@@ -638,6 +640,47 @@ public partial class MainWindow : Window
         var dialog = new LicenseDialog { Owner = this };
         dialog.ShowDialog();
         _viewModel?.UpdateTrialStatus();
+    }
+
+    private void ProductPage_Click(object sender, RoutedEventArgs e)
+    {
+        OpenUrlInBrowser("ProductPageUrl", "PDF Handlerのページ");
+    }
+
+    private void Contact_Click(object sender, RoutedEventArgs e)
+    {
+        OpenUrlInBrowser("ContactUrl", "お問い合わせ");
+    }
+
+    private void SurveyForm_Click(object sender, RoutedEventArgs e)
+    {
+        OpenUrlInBrowser("SurveyFormUrl", "アンケート・要望フォーム");
+    }
+
+    private void OpenUrlInBrowser(string settingKey, string displayName)
+    {
+        var app = (App)Application.Current;
+        var settings = app.GetService<AppSettings>();
+        string? url = settingKey switch
+        {
+            "ProductPageUrl" => settings.ProductPageUrl?.Trim(),
+            "ContactUrl" => settings.ContactUrl?.Trim(),
+            "SurveyFormUrl" => settings.SurveyFormUrl?.Trim(),
+            _ => null
+        };
+        if (string.IsNullOrEmpty(url))
+        {
+            MessageBox.Show($"{displayName}のURLが設定されていません。", "情報", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+        try
+        {
+            Process.Start(new ProcessStartInfo { FileName = url, UseShellExecute = true });
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"URLを開けませんでした。\n\n{ex.Message}", "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
     }
 
     // インライン編集機能・ショートカット

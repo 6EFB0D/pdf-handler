@@ -106,7 +106,13 @@ public partial class App : Application
         // ※ リリース前: 下記のプレースホルダーを実際のURLに差し替えること。docs/RELEASE_CHECKLIST.md 参照
         appSettings.ContactUrl = Environment.GetEnvironmentVariable("CONTACT_URL")
             ?? "https://example.com/contact";
-        
+
+        // 商品紹介ページ・アンケートフォーム（環境変数で上書き可能）
+        appSettings.ProductPageUrl = Environment.GetEnvironmentVariable("PRODUCT_PAGE_URL")
+            ?? appSettings.ProductPageUrl;
+        appSettings.SurveyFormUrl = Environment.GetEnvironmentVariable("SURVEY_FORM_URL")
+            ?? appSettings.SurveyFormUrl;
+
         services.AddSingleton(appSettings);
 
         // Services

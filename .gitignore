@@ -419,3 +419,6 @@ FodyWeavers.xsd
 
 # Internal documentation (confidential)
 docs/internal/
+
+# Version backup artifacts (large binaries - use Git LFS or store externally)
+backups/

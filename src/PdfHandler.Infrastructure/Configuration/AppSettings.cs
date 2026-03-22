@@ -29,6 +29,18 @@ public class AppSettings
     /// リリース前に実際のURLへ差し替えすること。環境変数 CONTACT_URL で上書き可能。
     /// </summary>
     public string ContactUrl { get; set; } = "https://example.com/contact";
+
+    /// <summary>
+    /// 商品紹介ページURL（ヘルプ → サポート・お問い合わせ 内で使用）
+    /// 環境変数 PRODUCT_PAGE_URL で上書き可能。
+    /// </summary>
+    public string ProductPageUrl { get; set; } = "https://github.com/6EFB0D/pdf-handler";
+
+    /// <summary>
+    /// アンケート・要望フォームURL（Google フォーム等の回答用 /viewform URL）
+    /// 環境変数 SURVEY_FORM_URL で上書き可能。
+    /// </summary>
+    public string SurveyFormUrl { get; set; } = "https://docs.google.com/forms/d/1NpXzk1kyUn2LhUzQhhMHq_tnT1oOGAsv561L-7nMfos/viewform";
 }
 
 /// <summary>

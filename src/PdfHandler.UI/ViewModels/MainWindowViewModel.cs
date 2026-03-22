@@ -98,6 +98,9 @@ public partial class MainWindowViewModel : ObservableObject
     [ObservableProperty]
     private bool _isTrialExpiringSoon = false;
 
+    /// <summary>試用期間終了時に購入ダイアログを1回だけ表示するためのフラグ</summary>
+    private bool _hasShownExpiredTrialDialogThisSession = false;
+
     // コピー・ペースト用の一時保存
     private List<string> _copiedFilePaths = new();
 
@@ -566,8 +569,12 @@ public partial class MainWindowViewModel : ObservableObject
             TrialStatusText = "試用期間が終了しました";
             IsTrialExpiringSoon = true;
             
-            // 試用期間終了時に購入ダイアログを表示
-            ShowPurchaseDialog();
+            // 試用期間終了時に購入ダイアログを1回だけ表示（閉じても再表示しない）
+            if (!_hasShownExpiredTrialDialogThisSession)
+            {
+                _hasShownExpiredTrialDialogThisSession = true;
+                ShowPurchaseDialog();
+            }
         }
         else
         {
@@ -590,8 +597,11 @@ public partial class MainWindowViewModel : ObservableObject
         licenseDialog.Owner = Application.Current.MainWindow;
         licenseDialog.ShowDialog();
         
-        // ダイアログを閉じた後にライセンス状態を更新
-        UpdateTrialStatus();
+        // 購入した場合のみライセンス状態を更新（閉じただけの場合は再表示しない）
+        if (_licenseService.IsLicenseValid())
+        {
+            UpdateTrialStatus();
+        }
     }
 
     partial void OnSelectedFolderChanged(FolderNode? value)

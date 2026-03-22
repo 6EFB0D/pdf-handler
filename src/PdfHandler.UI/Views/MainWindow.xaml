@@ -94,6 +94,13 @@
                 <Separator/>
                 <MenuItem x:Name="LicenseMenuItem" Header="ライセンス(_L)..." Click="License_Click"/>
                 <MenuItem Header="バージョン情報(_A)" Click="About_Click"/>
+                <Separator/>
+                <MenuItem Header="サポート・お問い合わせ(_S)">
+                    <MenuItem Header="PDF Handlerのページ" Click="ProductPage_Click"/>
+                    <MenuItem Header="お問い合わせ" Click="Contact_Click"/>
+                    <Separator/>
+                    <MenuItem Header="アンケート・要望を送信" Click="SurveyForm_Click"/>
+                </MenuItem>
             </MenuItem>
         </Menu>
 
