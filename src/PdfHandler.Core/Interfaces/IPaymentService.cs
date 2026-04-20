@@ -12,9 +12,16 @@ namespace PdfHandler.Core.Interfaces;
 public interface IPaymentService
 {
     /// <summary>
-    /// Stripe Checkoutセッションを作成
+    /// 購入手続きメールの送信を要求する（買い切り Standard のみ。サブスク新規販売は終了）
     /// </summary>
-    Task<string> CreateCheckoutSessionAsync(LicensePlan plan, bool isSubscription);
+    /// <param name="plan">ライセンスプラン（Standard版・買い切りのみ）</param>
+    /// <param name="customerEmail">ライセンス送付先メールアドレス。この宛先に Stripe Checkout リンク入りのメールが送信される。</param>
+    /// <returns>送信結果。Success=true の場合、指定メールアドレスに決済リンクメールが送信されている。</returns>
+    /// <remarks>
+    /// 以前は Checkout URL を返してアプリから直接ブラウザで開く方式だったが、
+    /// メールアドレスの誤入力を決済前に検知できるよう「メール先行 → リンクから Stripe」方式へ変更。
+    /// </remarks>
+    Task<RequestCheckoutResult> RequestCheckoutAsync(LicensePlan plan, string customerEmail);
 
     /// <summary>
     /// ライセンスキーを検証

@@ -30,14 +30,6 @@ public partial class PurchaseDialog : Window
         _paymentService = app.GetService<IPaymentService>();
         _appSettings = app.GetService<AppSettings>();
         _licenseService = app.GetService<ILicenseService>();
-        
-        // Premiumプランの表示/非表示を制御
-        if (PremiumPlanBorder != null)
-        {
-            PremiumPlanBorder.Visibility = _appSettings.EnablePremiumPlan 
-                ? System.Windows.Visibility.Visible 
-                : System.Windows.Visibility.Collapsed;
-        }
 
         // ヘッダーメッセージを動的に設定
         UpdateHeaderMessage();
@@ -49,11 +41,10 @@ public partial class PurchaseDialog : Window
 
         var licenseInfo = _licenseService.GetLicenseInfo();
         var isPurchased = licenseInfo.Plan == LicensePlan.StandardPurchased;
-        var isSubscribed = licenseInfo.Plan == LicensePlan.StandardSubscription || licenseInfo.Plan == LicensePlan.Premium || licenseInfo.Plan == LicensePlan.PremiumBYOK;
 
         if (isPurchased)
         {
-            HeaderMessageText.Text = "ご購入いただきありがとうございます。サブスクリプションに切り替えると、自動バージョンアップ・メールサポートなどのメリットをご利用いただけます。";
+            HeaderMessageText.Text = "ご購入いただきありがとうございます。";
         }
         else if (_licenseService.IsTrialValid())
         {
@@ -85,23 +76,6 @@ public partial class PurchaseDialog : Window
                 NotPurchasedStatePanel.Visibility = Visibility.Visible;
             }
         }
-
-        // サブスクリプション契約済みの場合は契約済みパネルを表示
-        if (SubscriptionContractStatePanel != null && SubscriptionNotContractStatePanel != null)
-        {
-            if (isSubscribed)
-            {
-                SubscriptionContractStatePanel.Visibility = Visibility.Visible;
-                SubscriptionNotContractStatePanel.Visibility = Visibility.Collapsed;
-                if (AdditionalSubscriptionCheckBox != null) AdditionalSubscriptionCheckBox.IsChecked = false;
-                if (StartSubscriptionButton != null) StartSubscriptionButton.IsEnabled = false;
-            }
-            else
-            {
-                SubscriptionContractStatePanel.Visibility = Visibility.Collapsed;
-                SubscriptionNotContractStatePanel.Visibility = Visibility.Visible;
-            }
-        }
     }
 
     private void AdditionalPurchaseCheckBox_Changed(object sender, RoutedEventArgs e)
@@ -112,49 +86,50 @@ public partial class PurchaseDialog : Window
         }
     }
 
-    private void AdditionalSubscriptionCheckBox_Changed(object sender, RoutedEventArgs e)
-    {
-        if (StartSubscriptionButton != null && AdditionalSubscriptionCheckBox != null)
-        {
-            StartSubscriptionButton.IsEnabled = AdditionalSubscriptionCheckBox.IsChecked == true;
-        }
-    }
-
     private async void PurchaseStandardLifetime_Click(object sender, RoutedEventArgs e)
     {
         try
         {
             DebugLogger.WriteLine("=== 買い切り版購入開始 ===");
-            var checkoutUrl = await _paymentService.CreateCheckoutSessionAsync(
-                LicensePlan.StandardPurchased, 
-                isSubscription: false);
-            
-            if (string.IsNullOrWhiteSpace(checkoutUrl))
+            var emailDlg = new PurchaseEmailDialog { Owner = this };
+            if (emailDlg.ShowDialog() != true) return;
+
+            var result = await _paymentService.RequestCheckoutAsync(
+                LicensePlan.StandardPurchased, emailDlg.CustomerEmail);
+
+            if (!result.Success)
             {
-                throw new Exception("Checkout URLが取得できませんでした。");
+                throw new Exception(string.IsNullOrWhiteSpace(result.Message)
+                    ? "購入手続きメールの送信に失敗しました。"
+                    : result.Message);
             }
-            
-            DebugLogger.WriteLine($"ブラウザを起動します... (URL: {checkoutUrl})");
-            try
-            {
-                Process.Start(new ProcessStartInfo
-                {
-                    FileName = checkoutUrl,
-                    UseShellExecute = true
-                });
-                DebugLogger.WriteLine("ブラウザ起動成功");
-            }
-            catch (Exception procEx)
-            {
-                DebugLogger.WriteLine($"ブラウザ起動エラー: {procEx.GetType().Name} - {procEx.Message}");
-                throw;
-            }
-            
+
+            DebugLogger.WriteLine($"購入手続きメール送信成功: {result.EmailMasked}");
+
             MessageBox.Show(
-                "ブラウザで決済ページが開きました。\n\n決済完了後、ライセンスキーがメールで送信されます。",
-                "決済ページを開きました",
+                $"{result.EmailMasked} 宛にお支払い手続きのメールをお送りしました。\n\n" +
+                "メールに記載のリンクから決済にお進みください。\n" +
+                "リンクの有効期限は送信から 24 時間です。\n\n" +
+                "※ メールが届かない場合:\n" +
+                "・迷惑メールフォルダをご確認ください（最大5分ほどかかる場合があります）\n" +
+                "・メールアドレスが正しく入力されているかご確認ください\n" +
+                "・届かない場合はもう一度お試しください",
+                "お支払い手続きメールを送信しました",
                 MessageBoxButton.OK,
                 MessageBoxImage.Information);
+
+            // メール送信後はダイアログを閉じて、ユーザーは受信箱で作業継続
+            DialogResult = false;
+            Close();
+        }
+        catch (InvalidOperationException ex)
+        {
+            // 入力バリデーションエラー（メール未入力・形式不正など）
+            MessageBox.Show(
+                ex.Message,
+                "入力エラー",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
         }
         catch (Exception ex)
         {
@@ -164,119 +139,11 @@ public partial class PurchaseDialog : Window
             {
                 DebugLogger.WriteLine($"内部例外: {ex.InnerException.Message}");
             }
-            
-            var logPath = DebugLogger.GetLogFilePath();
-            MessageBox.Show(
-                $"決済ページの表示に失敗しました。\n\nエラー: {ex.Message}\n\n詳細はログファイルを確認してください。\nログファイル: {logPath}\n\nライセンスキーを直接入力する方法もご利用いただけます。",
-                "エラー",
-                MessageBoxButton.OK,
-                MessageBoxImage.Error);
-        }
-    }
 
-    private async void StartTrialStandard_Click(object sender, RoutedEventArgs e)
-    {
-        try
-        {
-            DebugLogger.WriteLine("=== サブスクリプション開始 ===");
-            DebugLogger.WriteLine($"Supabase URL: {_appSettings.Supabase.Url}");
-            DebugLogger.WriteLine($"AnonKey設定: {!string.IsNullOrEmpty(_appSettings.Supabase.AnonKey)}");
-            
-            var checkoutUrl = await _paymentService.CreateCheckoutSessionAsync(
-                LicensePlan.StandardSubscription, 
-                isSubscription: true);
-            
-            DebugLogger.WriteLine($"Checkout URL取得: {!string.IsNullOrWhiteSpace(checkoutUrl)}");
-            DebugLogger.WriteLine($"Checkout URL: {checkoutUrl}");
-            
-            if (string.IsNullOrWhiteSpace(checkoutUrl))
-            {
-                throw new Exception("Checkout URLが取得できませんでした。");
-            }
-            
-            DebugLogger.WriteLine("ブラウザを起動します...");
-            DebugLogger.WriteLine($"Process.Start呼び出し: FileName={checkoutUrl}, UseShellExecute=true");
-            
-            try
-            {
-                Process.Start(new ProcessStartInfo
-                {
-                    FileName = checkoutUrl,
-                    UseShellExecute = true
-                });
-                DebugLogger.WriteLine("ブラウザ起動成功");
-            }
-            catch (Exception procEx)
-            {
-                DebugLogger.WriteLine($"ブラウザ起動エラー: {procEx.GetType().Name} - {procEx.Message}");
-                throw;
-            }
-            
             MessageBox.Show(
-                "ブラウザで決済ページが開きました。\n\n決済完了後、ライセンスキーがメールで送信されます。",
-                "サブスクリプション開始",
-                MessageBoxButton.OK,
-                MessageBoxImage.Information);
-        }
-        catch (Exception ex)
-        {
-            DebugLogger.WriteLine($"エラー詳細: {ex.GetType().Name}");
-            DebugLogger.WriteLine($"エラーメッセージ: {ex.Message}");
-            DebugLogger.WriteLine($"スタックトレース: {ex.StackTrace}");
-            if (ex.InnerException != null)
-            {
-                DebugLogger.WriteLine($"内部例外: {ex.InnerException.Message}");
-            }
-            
-            var logPath = DebugLogger.GetLogFilePath();
-            MessageBox.Show(
-                $"決済ページの表示に失敗しました。\n\nエラー: {ex.Message}\n\n詳細はログファイルを確認してください。\nログファイル: {logPath}\n\nライセンスキーを直接入力する方法もご利用いただけます。",
-                "エラー",
-                MessageBoxButton.OK,
-                MessageBoxImage.Error);
-        }
-    }
-
-    private async void StartTrialPremium_Click(object sender, RoutedEventArgs e)
-    {
-        // Premium版が非公開の場合は実行しない
-        if (!_appSettings.EnablePremiumPlan)
-        {
-            MessageBox.Show(
-                "Premiumプランは現在公開されていません。",
-                "情報",
-                MessageBoxButton.OK,
-                MessageBoxImage.Information);
-            return;
-        }
-
-        try
-        {
-            var checkoutUrl = await _paymentService.CreateCheckoutSessionAsync(
-                LicensePlan.Premium, 
-                isSubscription: true);
-            
-            if (string.IsNullOrWhiteSpace(checkoutUrl))
-            {
-                throw new Exception("Checkout URLが取得できませんでした。");
-            }
-            
-            Process.Start(new ProcessStartInfo
-            {
-                FileName = checkoutUrl,
-                UseShellExecute = true
-            });
-            
-            MessageBox.Show(
-                "ブラウザで決済ページが開きました。\n\n決済完了後、ライセンスキーがメールで送信されます。",
-                "サブスクリプション開始",
-                MessageBoxButton.OK,
-                MessageBoxImage.Information);
-        }
-        catch (Exception ex)
-        {
-            MessageBox.Show(
-                $"決済ページの表示に失敗しました。\n\nエラー: {ex.Message}\n\nライセンスキーを直接入力する方法もご利用いただけます。",
+                $"{ex.Message}\n\n" +
+                "問題が解消しない場合は support@office-goplan.com までお問い合わせください。\n" +
+                "既にお持ちのライセンスキーは「ライセンスキーを入力」からご登録いただけます。",
                 "エラー",
                 MessageBoxButton.OK,
                 MessageBoxImage.Error);

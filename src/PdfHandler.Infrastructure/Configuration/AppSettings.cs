@@ -20,11 +20,6 @@ public class AppSettings
     public StripeSettings Stripe { get; set; } = new();
 
     /// <summary>
-    /// Premium版の公開設定（v1.0ではfalse）
-    /// </summary>
-    public bool EnablePremiumPlan { get; set; } = false;
-
-    /// <summary>
     /// お問い合わせ先URL（サポート・ボリュームライセンス共通）
     /// リリース前に実際のURLへ差し替えすること。環境変数 CONTACT_URL で上書き可能。
     /// </summary>
@@ -41,6 +36,12 @@ public class AppSettings
     /// 環境変数 SURVEY_FORM_URL で上書き可能。
     /// </summary>
     public string SurveyFormUrl { get; set; } = "https://docs.google.com/forms/d/1NpXzk1kyUn2LhUzQhhMHq_tnT1oOGAsv561L-7nMfos/viewform";
+
+    /// <summary>
+    /// HMACオフライン検証用の秘密鍵（license-code-specification 準拠）
+    /// 環境変数 LICENSE_SECRET_KEY で設定。未設定だとオフライン検証不可。
+    /// </summary>
+    public string LicenseSecretKey { get; set; } = "";
 }
 
 /// <summary>

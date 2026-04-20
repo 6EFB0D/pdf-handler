@@ -63,7 +63,7 @@ public interface ILicenseService
 
     /// <summary>
     /// 現在のアプリバージョンがライセンスで利用可能かどうかを判定
-    /// （買い切り版: 同一メジャー以内、サブスク: 全バージョン）
+    /// （買い切り: 同一メジャー以内）
     /// </summary>
     bool IsVersionCompatible();
 

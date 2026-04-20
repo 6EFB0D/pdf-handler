@@ -111,7 +111,6 @@ public class LicenseVerificationResult
     public bool IsValid { get; set; }
     public LicensePlan? Plan { get; set; }
     public DateTime? ExpirationDate { get; set; }
-    public DateTime? SubscriptionRenewalDate { get; set; }
     public DateTime? LastVerificationDate { get; set; }
     public DateTime? NextVerificationDate { get; set; }
     public string? ErrorMessage { get; set; }
@@ -125,7 +124,6 @@ public class LicenseActivationResult
     public bool Success { get; set; }
     public LicensePlan? Plan { get; set; }
     public DateTime? ExpirationDate { get; set; }
-    public DateTime? SubscriptionRenewalDate { get; set; }
     public string? ErrorMessage { get; set; }
 }
 

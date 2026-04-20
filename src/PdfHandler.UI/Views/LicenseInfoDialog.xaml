@@ -41,12 +41,6 @@
                                    Margin="0,0,0,5"
                                    FontSize="13"
                                    Visibility="Collapsed"/>
-                        <TextBlock x:Name="SubscriptionRenewalText" 
-                                   Text="" 
-                                   Foreground="#555555" 
-                                   Margin="0,0,0,5"
-                                   FontSize="13"
-                                   Visibility="Collapsed"/>
                         <TextBlock x:Name="LastVerificationText" 
                                    Text="" 
                                    Foreground="#666666" 

@@ -41,10 +41,7 @@ namespace PdfHandler.UI.Views
                 {
                     LicensePlan.Trial => "試用期間中",
                     LicensePlan.StandardPurchased => "Standard版（買い切り）",
-                    LicensePlan.StandardSubscription => "Standard版（サブスクリプション）",
-                    LicensePlan.Premium => "Premium版",
-                    LicensePlan.PremiumBYOK => "Premium版（BYOK）",
-                    _ => "ライセンス情報不明"
+                    _ => "Standard版（買い切り）",
                 };
                 
                 // ライセンス状態を表示
@@ -61,17 +58,6 @@ namespace PdfHandler.UI.Views
                 else if (_licenseService.IsLicenseValid())
                 {
                     LicenseStatusText.Text = "ライセンス有効";
-                    
-                    if (licenseInfo.Plan == LicensePlan.StandardSubscription || 
-                        licenseInfo.Plan == LicensePlan.Premium || 
-                        licenseInfo.Plan == LicensePlan.PremiumBYOK)
-                    {
-                        if (licenseInfo.SubscriptionRenewalDate.HasValue)
-                        {
-                            SubscriptionRenewalText.Text = $"サブスクリプション更新日: {licenseInfo.SubscriptionRenewalDate.Value:yyyy年MM月dd日}";
-                            SubscriptionRenewalText.Visibility = Visibility.Visible;
-                        }
-                    }
                     
                     if (licenseInfo.LastVerificationDate.HasValue)
                     {

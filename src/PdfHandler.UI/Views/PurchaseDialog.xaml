@@ -35,7 +35,7 @@
                         Background="White" Margin="0,0,0,15" Padding="20">
                     <StackPanel>
                         <TextBlock Text="Standard版（買い切り）" FontSize="18" FontWeight="Bold" Margin="0,0,0,10"/>
-                        <TextBlock Text="¥3,480" FontSize="32" Foreground="#0066CC" Margin="0,0,0,10"/>
+                        <TextBlock Text="¥3,850（税込）" FontSize="32" Foreground="#0066CC" Margin="0,0,0,10"/>
                         <TextBlock Text="• PDF結合・分割（無制限）" FontSize="13" Margin="0,3"/>
                         <TextBlock Text="• ページ回転・ファイル名変更" FontSize="13" Margin="0,3"/>
                         <TextBlock Text="• 専用ワークフォルダ" FontSize="13" Margin="0,3"/>
@@ -61,59 +61,6 @@
                                     Click="PurchaseStandardLifetime_Click"
                                     Background="#0066CC" Foreground="White" BorderThickness="0"/>
                         </StackPanel>
-                    </StackPanel>
-                </Border>
-
-                <!-- Standardサブスク -->
-                <Border x:Name="StandardSubscriptionBorder" BorderBrush="#CCCCCC" BorderThickness="1" 
-                        Background="White" Margin="0,0,0,15" Padding="20">
-                    <StackPanel>
-                        <TextBlock Text="Standard版（サブスクリプション）" FontSize="18" FontWeight="Bold" Margin="0,0,0,10"/>
-                        <TextBlock Text="¥1,600/年" FontSize="32" Foreground="#0066CC" Margin="0,0,0,10"/>
-                        <TextBlock Text="• Standard買い切り版の全機能" FontSize="13" Margin="0,3"/>
-                        <TextBlock Text="• 自動バージョンアップ" FontSize="13" Margin="0,3"/>
-                        <TextBlock Text="• メールサポート" FontSize="13" Margin="0,3"/>
-                        <TextBlock Text="• 年額更新（いつでも解約可能）" FontSize="13" Margin="0,3"/>
-                        <!-- 契約済み表示 -->
-                        <StackPanel x:Name="SubscriptionContractStatePanel" Margin="0,15,0,0" Visibility="Collapsed">
-                            <Border Background="#E8F5E9" Padding="12" CornerRadius="5" Margin="0,0,0,10">
-                                <TextBlock x:Name="SubscriptionContractLabelText" Text="✓ このサブスクリプションはご契約済みです" 
-                                           FontSize="14" Foreground="#2E7D32" FontWeight="SemiBold"/>
-                            </Border>
-                            <CheckBox x:Name="AdditionalSubscriptionCheckBox" 
-                                      Content="追加でサブスクリプションを契約する（上記をご確認の上チェック）"
-                                      FontSize="12" Foreground="#555555" Margin="0,0,0,10"
-                                      Checked="AdditionalSubscriptionCheckBox_Changed" Unchecked="AdditionalSubscriptionCheckBox_Changed"/>
-                            <Button x:Name="StartSubscriptionButton" Content="追加契約する" Padding="20,8"
-                                    Click="StartTrialStandard_Click"
-                                    Background="#28A745" Foreground="White" BorderThickness="0"
-                                    IsEnabled="False"/>
-                        </StackPanel>
-                        <!-- 未契約時 -->
-                        <StackPanel x:Name="SubscriptionNotContractStatePanel" Margin="0,15,0,0">
-                            <Button x:Name="StartSubscriptionButtonFirst" Content="サブスクリプションを開始" Padding="20,8"
-                                    Click="StartTrialStandard_Click"
-                                    Background="#28A745" Foreground="White" BorderThickness="0"/>
-                        </StackPanel>
-                    </StackPanel>
-                </Border>
-
-                <!-- Premium（v1.0では非表示） -->
-                <Border x:Name="PremiumPlanBorder" 
-                        BorderBrush="#0066CC" BorderThickness="2" 
-                        Background="White" Margin="0,0,0,15" Padding="20"
-                        Visibility="Collapsed">
-                    <StackPanel>
-                        <TextBlock Text="Premium版" FontSize="18" FontWeight="Bold" Margin="0,0,0,10"/>
-                        <TextBlock Text="¥4,880/年" FontSize="32" Foreground="#0066CC" Margin="0,0,0,10"/>
-                        <TextBlock Text="• Standard版の全機能" FontSize="13" Margin="0,3"/>
-                        <TextBlock Text="• AI文書要約" FontSize="13" Margin="0,3"/>
-                        <TextBlock Text="• AIセマンティック検索" FontSize="13" Margin="0,3"/>
-                        <TextBlock Text="• コマンドコンソール" FontSize="13" Margin="0,3"/>
-                        <TextBlock Text="• 年額更新（いつでも解約可能）" FontSize="13" Margin="0,3"/>
-                        <Button Content="サブスクリプションを開始" Margin="0,15,0,0" Padding="20,8"
-                                Click="StartTrialPremium_Click"
-                                Background="#0066CC" Foreground="White" BorderThickness="0"/>
                     </StackPanel>
                 </Border>
 

@@ -41,7 +41,7 @@
                         Background="White" Margin="0,0,0,12" Padding="15">
                     <StackPanel>
                         <TextBlock Text="Standard版（買い切り）" FontSize="16" FontWeight="Bold" Margin="0,0,0,8"/>
-                        <TextBlock Text="¥3,480" FontSize="28" Foreground="#0066CC" Margin="0,0,0,8"/>
+                        <TextBlock Text="¥3,850（税込）" FontSize="28" Foreground="#0066CC" Margin="0,0,0,8"/>
                         <TextBlock Text="• PDF結合・分割・専用ワークフォルダ・永続利用" FontSize="12" Foreground="#555555"/>
                         <StackPanel x:Name="PurchasedStatePanel" Margin="0,12,0,0" Visibility="Collapsed">
                             <Border Background="#E8F5E9" Padding="10" CornerRadius="5" Margin="0,0,0,8">
@@ -58,43 +58,6 @@
                             <Button x:Name="PurchaseStandardButtonFirst" Content="購入する" Padding="15,6"
                                     Click="PurchaseStandardLifetime_Click" Background="#0066CC" Foreground="White" BorderThickness="0"/>
                         </StackPanel>
-                    </StackPanel>
-                </Border>
-
-                <!-- Standardサブスク -->
-                <Border x:Name="StandardSubscriptionBorder" BorderBrush="#CCCCCC" BorderThickness="1"
-                        Background="White" Margin="0,0,0,12" Padding="15">
-                    <StackPanel>
-                        <TextBlock Text="Standard版（サブスクリプション）" FontSize="16" FontWeight="Bold" Margin="0,0,0,8"/>
-                        <TextBlock Text="¥1,600/年" FontSize="28" Foreground="#0066CC" Margin="0,0,0,8"/>
-                        <TextBlock Text="• 買い切り版の全機能・自動バージョンアップ・メールサポート" FontSize="12" Foreground="#555555"/>
-                        <StackPanel x:Name="SubscriptionContractStatePanel" Margin="0,12,0,0" Visibility="Collapsed">
-                            <Border Background="#E8F5E9" Padding="10" CornerRadius="5" Margin="0,0,0,8">
-                                <TextBlock Text="✓ ご契約済みです" FontSize="13" Foreground="#2E7D32" FontWeight="SemiBold"/>
-                            </Border>
-                            <CheckBox x:Name="AdditionalSubscriptionCheckBox" Content="追加契約する（確認の上チェック）"
-                                      FontSize="12" Foreground="#555555" Margin="0,0,0,8"
-                                      Checked="AdditionalSubscriptionCheckBox_Changed" Unchecked="AdditionalSubscriptionCheckBox_Changed"/>
-                            <Button x:Name="StartSubscriptionButton" Content="追加契約する" Padding="15,6"
-                                    Click="StartTrialStandard_Click" Background="#28A745" Foreground="White"
-                                    BorderThickness="0" IsEnabled="False"/>
-                        </StackPanel>
-                        <StackPanel x:Name="SubscriptionNotContractStatePanel" Margin="0,12,0,0">
-                            <Button x:Name="StartSubscriptionButtonFirst" Content="サブスクリプションを開始" Padding="15,6"
-                                    Click="StartTrialStandard_Click" Background="#28A745" Foreground="White" BorderThickness="0"/>
-                        </StackPanel>
-                    </StackPanel>
-                </Border>
-
-                <!-- Premium（EnablePremiumPlanで制御） -->
-                <Border x:Name="PremiumPlanBorder" BorderBrush="#0066CC" BorderThickness="2"
-                        Background="White" Margin="0,0,0,12" Padding="15" Visibility="Collapsed">
-                    <StackPanel>
-                        <TextBlock Text="Premium版" FontSize="16" FontWeight="Bold" Margin="0,0,0,8"/>
-                        <TextBlock Text="¥4,880/年" FontSize="28" Foreground="#0066CC" Margin="0,0,0,8"/>
-                        <TextBlock Text="• Standard版の全機能・AI文書要約・AIセマンティック検索・コマンドコンソール" FontSize="12" Foreground="#555555"/>
-                        <Button Content="サブスクリプションを開始" Margin="0,12,0,0" Padding="15,6"
-                                Click="StartTrialPremium_Click" Background="#0066CC" Foreground="White" BorderThickness="0"/>
                     </StackPanel>
                 </Border>
 

@@ -262,22 +262,30 @@ public partial class MainWindowViewModel : ObservableObject
     }
 
     /// <summary>
-    /// ライセンス検証チェック（30日ごと）
+    /// ライセンス検証チェック（HMACハイブリッド方式）
+    /// 有償ライセンス（買い切り）は起動時に毎回検証。
+    /// オンライン成功→7日間キャッシュ。失敗時はHMACオフラインにフォールバック。
     /// </summary>
     private async Task CheckLicenseVerificationAsync()
     {
         try
         {
             var licenseInfo = _licenseService.GetLicenseInfo();
-            
-            // 試用期間中または買い切り版の場合は検証不要
-            if (licenseInfo.Plan == LicensePlan.Trial || licenseInfo.Plan == LicensePlan.StandardPurchased)
+
+            // 試用期間中は検証不要
+            if (licenseInfo.Plan == LicensePlan.Trial)
             {
                 return;
             }
-            
-            // 検証が必要かチェック
-            if (licenseInfo.IsVerificationRequired())
+
+            if (string.IsNullOrEmpty(licenseInfo.LicenseKey))
+            {
+                return;
+            }
+
+            var needsVerification = licenseInfo.Plan == LicensePlan.StandardPurchased;
+
+            if (needsVerification)
             {
                 // 検証を実行
                 var verificationResult = await _licenseService.VerifyLicenseAsync();
@@ -582,9 +590,6 @@ public partial class MainWindowViewModel : ObservableObject
             TrialStatusText = licenseInfo.Plan switch
             {
                 LicensePlan.StandardPurchased => "Standard版（買い切り）",
-                LicensePlan.StandardSubscription => "Standard版（サブスクリプション）",
-                LicensePlan.Premium => "Premium版",
-                LicensePlan.PremiumBYOK => "Premium版（BYOK）",
                 _ => "ライセンス情報不明"
             };
             IsTrialExpiringSoon = false;

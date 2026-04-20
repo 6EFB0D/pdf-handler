@@ -9,6 +9,7 @@ using System.Text.Json;
 using PdfHandler.Core.Interfaces;
 using PdfHandler.Core.Models;
 using PdfHandler.Infrastructure.Configuration;
+using PdfHandler.Infrastructure.Helpers;
 
 namespace PdfHandler.Infrastructure.Services;
 
@@ -38,7 +39,7 @@ public class LicenseService : ILicenseService, IDisposable
         _licenseFilePath = Path.Combine(pdfHandlerPath, "license.json");
         _hardwareId = GenerateHardwareId();
 
-        _httpClient = new HttpClient();
+        _httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
         _httpClient.DefaultRequestHeaders.Add("apikey", _settings.Supabase.AnonKey);
         _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {_settings.Supabase.AnonKey}");
     }
@@ -80,11 +81,14 @@ public class LicenseService : ILicenseService, IDisposable
     }
 
     /// <summary>
-    /// 復号したライセンスキーを取得（表示・コピー用）
+    /// 復号したライセンスキーを取得（表示・コピー用。4桁区切りフォーマット）
     /// </summary>
     public string? GetLicenseKey()
     {
-        return DecryptLicenseKey(GetLicenseInfo().LicenseKey);
+        var raw = DecryptLicenseKey(GetLicenseInfo().LicenseKey);
+        if (string.IsNullOrEmpty(raw)) return null;
+        var normalized = LicenseKeyHelper.Normalize(raw) ?? LicenseKeyHelper.NormalizeLegacy(raw);
+        return string.IsNullOrEmpty(normalized) ? raw : LicenseKeyHelper.FormatForDisplay(normalized);
     }
 
     /// <summary>
@@ -186,6 +190,7 @@ public class LicenseService : ILicenseService, IDisposable
 
     /// <summary>
     /// ライセンスキーでアクティベーション（Supabase verify-license で検証）
+    /// 5秒タイムアウト。キーは正規化して送信（4桁区切り入力対応）
     /// </summary>
     public async Task<bool> ActivateLicenseAsync(string licenseKey)
     {
@@ -195,11 +200,14 @@ public class LicenseService : ILicenseService, IDisposable
             return false;
         }
 
+        // 正規化（4桁区切り入力・旧形式対応）
+        var keyToSend = LicenseKeyHelper.Normalize(trimmedKey) ?? LicenseKeyHelper.NormalizeLegacy(trimmedKey) ?? trimmedKey;
+
         try
         {
             var deviceName = Environment.MachineName;
             var appVersion = GetCurrentAppVersion();
-            var request = new { licenseKey = trimmedKey, hardwareId = _hardwareId, deviceName, appVersion };
+            var request = new { licenseKey = keyToSend, hardwareId = _hardwareId, deviceName, appVersion };
             var json = JsonSerializer.Serialize(request);
             var content = new StringContent(json, Encoding.UTF8, "application/json");
 
@@ -229,12 +237,12 @@ public class LicenseService : ILicenseService, IDisposable
             var license = GetLicenseInfo();
 
             license.Plan = plan;
-            license.LicenseKey = EncryptLicenseKey(trimmedKey);
+            license.LicenseKey = EncryptLicenseKey(keyToSend);
             license.ActivationDate = DateTime.Now;
+            license.LastSuccessfulOnlineVerificationAt = DateTime.Now; // アクティベーション成功＝オンライン検証成功
             license.LastVerificationDate = result.LastVerificationDate;
             license.NextVerificationDate = result.NextVerificationDate;
             license.ExpirationDate = result.ExpirationDate;
-            license.SubscriptionRenewalDate = result.SubscriptionRenewalDate;
             license.PurchasedVersion = result.PurchasedVersion;
 
             await SaveLicenseAsync(license);
@@ -250,16 +258,8 @@ public class LicenseService : ILicenseService, IDisposable
     /// <summary>
     /// サーバー応答のプラン文字列をLicensePlanに変換
     /// </summary>
-    private static LicensePlan MapPlanFromServer(string? plan)
-    {
-        return plan switch
-        {
-            "purchased" => LicensePlan.StandardPurchased,
-            "subscription_standard" => LicensePlan.StandardSubscription,
-            "subscription_premium" => LicensePlan.Premium,
-            _ => LicensePlan.StandardPurchased
-        };
-    }
+    private static LicensePlan MapPlanFromServer(string? plan) =>
+        plan == "purchased" ? LicensePlan.StandardPurchased : LicensePlan.StandardPurchased;
 
     /// <summary>
     /// verify-license API レスポンス
@@ -270,7 +270,6 @@ public class LicenseService : ILicenseService, IDisposable
         public string? Plan { get; set; }
         public string? PurchasedVersion { get; set; }
         public DateTime? ExpirationDate { get; set; }
-        public DateTime? SubscriptionRenewalDate { get; set; }
         public DateTime? LastVerificationDate { get; set; }
         public DateTime? NextVerificationDate { get; set; }
         public string? ErrorMessage { get; set; }
@@ -318,11 +317,20 @@ public class LicenseService : ILicenseService, IDisposable
     }
 
     /// <summary>
+    /// API送信用に正規化されたライセンスキーを取得
+    /// </summary>
+    private string? GetNormalizedLicenseKeyForApi()
+    {
+        var raw = DecryptLicenseKey(GetLicenseInfo().LicenseKey);
+        return LicenseKeyHelper.Normalize(raw) ?? LicenseKeyHelper.NormalizeLegacy(raw) ?? raw;
+    }
+
+    /// <summary>
     /// アクティベーション一覧を取得
     /// </summary>
     public async Task<LicenseActivationsResult?> GetActivationsAsync()
     {
-        var licenseKey = DecryptLicenseKey(GetLicenseInfo().LicenseKey);
+        var licenseKey = GetNormalizedLicenseKeyForApi();
         if (string.IsNullOrEmpty(licenseKey))
             return null;
 
@@ -375,7 +383,7 @@ public class LicenseService : ILicenseService, IDisposable
     /// </summary>
     public async Task<bool> DeactivateDeviceAsync(string activationId)
     {
-        var licenseKey = DecryptLicenseKey(GetLicenseInfo().LicenseKey);
+        var licenseKey = GetNormalizedLicenseKeyForApi();
         if (string.IsNullOrEmpty(licenseKey) || string.IsNullOrEmpty(activationId))
             return false;
 
@@ -409,7 +417,7 @@ public class LicenseService : ILicenseService, IDisposable
     /// </summary>
     public async Task<bool> UpdateDeviceDisplayNameAsync(string activationId, string displayName)
     {
-        var licenseKey = DecryptLicenseKey(GetLicenseInfo().LicenseKey);
+        var licenseKey = GetNormalizedLicenseKeyForApi();
         if (string.IsNullOrEmpty(licenseKey) || string.IsNullOrEmpty(activationId))
             return false;
 
@@ -482,12 +490,10 @@ public class LicenseService : ILicenseService, IDisposable
         var license = GetLicenseInfo();
         if (license.Plan == LicensePlan.Trial)
             return true;
-        if (license.Plan == LicensePlan.StandardSubscription || license.Plan == LicensePlan.Premium || license.Plan == LicensePlan.PremiumBYOK)
-            return true; // サブスクは全バージョン
         if (license.Plan != LicensePlan.StandardPurchased)
             return true;
 
-        // 買い切り版: 現在のメジャー <= 購入時のメジャー
+        // 買い切り: 現在のメジャー <= 購入時のメジャー
         var purchasedMajor = ParseMajorVersion(license.PurchasedVersion);
         var currentMajor = GetCurrentAppMajorVersion();
         return currentMajor <= purchasedMajor;
@@ -556,7 +562,7 @@ public class LicenseService : ILicenseService, IDisposable
             "Rename" => plan != LicensePlan.Trial, // ファイル名変更は有償版のみ
             // "Binder" => plan >= LicensePlan.StandardPurchased, // 一旦無効化
             // "PrintDriver" => plan >= LicensePlan.StandardPurchased, // 一旦無効化
-            "AI" => plan >= LicensePlan.Premium,
+            "AI" => plan == LicensePlan.StandardPurchased,
             _ => false
         };
     }
@@ -626,13 +632,81 @@ public class LicenseService : ILicenseService, IDisposable
     }
 
     /// <summary>
-    /// ライセンスを検証（定期的なオンライン検証用）
+    /// ライセンスを検証（HMACハイブリッド方式）
+    /// 1. オンライン検証（5秒タイムアウト）成功→キャッシュ更新してtrue
+    /// 2. オンライン失敗→HMACオフライン検証にフォールバック
+    /// 3. HMAC有効 かつ 最終オンライン成功から7日以内→true
+    /// 4. それ以外→false
     /// </summary>
     public async Task<bool> VerifyLicenseAsync()
     {
-        // TODO: Supabase経由でオンライン検証を実装
-        // 現時点では簡易実装（常にtrueを返す）
-        await Task.CompletedTask;
+        var license = GetLicenseInfo();
+        if (license.Plan == LicensePlan.Trial || string.IsNullOrEmpty(license.LicenseKey))
+        {
+            await Task.CompletedTask;
+            return true; // 試用期間中は検証不要
+        }
+
+        var rawKey = DecryptLicenseKey(license.LicenseKey);
+        var normalizedKey = LicenseKeyHelper.Normalize(rawKey) ?? LicenseKeyHelper.NormalizeLegacy(rawKey);
+
+        if (string.IsNullOrEmpty(normalizedKey))
+        {
+            await Task.CompletedTask;
+            return false;
+        }
+
+        try
+        {
+            // 1. オンライン検証（5秒タイムアウト）
+            var deviceName = Environment.MachineName;
+            var appVersion = GetCurrentAppVersion();
+            var request = new { licenseKey = normalizedKey, hardwareId = _hardwareId, deviceName, appVersion };
+            var json = JsonSerializer.Serialize(request);
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+            var response = await _httpClient.PostAsync(
+                $"{_settings.Supabase.Url}/functions/v1/verify-license",
+                content);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var responseJson = await response.Content.ReadAsStringAsync();
+                var result = JsonSerializer.Deserialize<VerifyLicenseResponse>(responseJson,
+                    new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+                if (result != null && result.IsValid)
+                {
+                    license.LastSuccessfulOnlineVerificationAt = DateTime.Now;
+                    license.LastVerificationDate = result.LastVerificationDate;
+                    license.NextVerificationDate = result.NextVerificationDate;
+                    await SaveLicenseAsync(license);
+                    return true;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"オンライン検証失敗（フォールバック）: {ex.Message}");
+        }
+
+        // 2. オンライン失敗→HMACオフライン検証
+        if (!LicenseKeyHelper.IsHmacFormat(normalizedKey))
+            return false; // HMAC形式でないキーはオフライン検証不可
+
+        if (!LicenseKeyHelper.VerifyHmac(normalizedKey, _settings.LicenseSecretKey))
+            return false;
+
+        // 3. 最終オンライン成功から7日以内か
+        var lastOnline = license.LastSuccessfulOnlineVerificationAt;
+        if (!lastOnline.HasValue)
+            return false; // 一度もオンライン成功していない場合は拒否
+
+        var elapsed = DateTime.Now - lastOnline.Value;
+        if (elapsed.TotalDays > 7)
+            return false;
+
+        // オフラインモードで許可（ライセンス情報は更新しない）
         return true;
     }
 

@@ -2,7 +2,10 @@
 // Copyright (c) 2024-2025 Goplan. All rights reserved.
 // Licensed under the MIT License. See LICENSE file in the project root for full license information.
 
+using System;
+using System.Collections.Generic;
 using System.Net.Http;
+using System.Net.Mail;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -31,69 +34,124 @@ public class PaymentService : IPaymentService
     }
 
     /// <summary>
-    /// Stripe Checkoutセッションを作成
+    /// 購入手続きメールの送信を要求する（買い切り Standard のみ）
     /// </summary>
-    public async Task<string> CreateCheckoutSessionAsync(LicensePlan plan, bool isSubscription)
+    /// <remarks>
+    /// request-checkout Edge Function を呼び出し、サーバ側で Stripe Checkout Session 作成 &amp; 決済リンク入りメール送信を行う。
+    /// 旧 CreateCheckoutSessionAsync と異なり、Checkout URL はクライアントには返されない。
+    /// </remarks>
+    public async Task<RequestCheckoutResult> RequestCheckoutAsync(LicensePlan plan, string customerEmail)
     {
         try
         {
-            // Premium版が非公開の場合は、Premiumプランの選択を拒否
-            if (!_settings.EnablePremiumPlan && plan == LicensePlan.Premium)
+            if (plan != LicensePlan.StandardPurchased)
             {
-                throw new InvalidOperationException("Premiumプランは現在公開されていません。");
+                throw new InvalidOperationException("新規販売は Standard版（買い切り）のみです。");
             }
 
-            var request = new
+            var email = customerEmail?.Trim() ?? "";
+            if (string.IsNullOrEmpty(email))
             {
-                plan = plan.ToString(),
-                isSubscription = isSubscription
+                throw new InvalidOperationException("メールアドレスを入力してください。");
+            }
+
+            try
+            {
+                _ = new MailAddress(email);
+            }
+            catch (FormatException)
+            {
+                throw new InvalidOperationException("メールアドレスの形式が正しくありません。");
+            }
+
+            // Dictionary でキーを固定（匿名型や命名ポリシー差で Edge が読み取れないのを防ぐ）
+            var request = new Dictionary<string, string>
+            {
+                ["plan"] = plan.ToString(),
+                ["appId"] = "PDFH",
+                ["customerEmail"] = email,
+                ["majorVersion"] = "1",
             };
 
             var json = JsonSerializer.Serialize(request);
             var content = new StringContent(json, Encoding.UTF8, "application/json");
 
-            var requestUrl = $"{_settings.Supabase.Url}/functions/v1/create-checkout-session";
-            DebugLogger.WriteLine($"=== Checkoutセッション作成開始 ===");
+            var requestUrl = $"{_settings.Supabase.Url}/functions/v1/request-checkout";
+            var maskedEmail = MaskEmail(email);
+
+            DebugLogger.WriteLine($"=== 購入手続きメール送信リクエスト開始 ===");
             DebugLogger.WriteLine($"リクエストURL: {requestUrl}");
-            DebugLogger.WriteLine($"リクエストボディ: {json}");
-            
+            DebugLogger.WriteLine($"リクエスト: plan={plan}, appId=PDFH, customerEmail={maskedEmail}");
+
             var response = await _httpClient.PostAsync(requestUrl, content);
-            
+
             DebugLogger.WriteLine($"レスポンスステータス: {response.StatusCode}");
-            
+
             var responseContent = await response.Content.ReadAsStringAsync();
             DebugLogger.WriteLine($"レスポンス内容: {responseContent}");
 
-            if (response.IsSuccessStatusCode)
+            var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+
+            if (!response.IsSuccessStatusCode)
             {
-                var options = new JsonSerializerOptions
-                {
-                    PropertyNameCaseInsensitive = true
-                };
-                var result = JsonSerializer.Deserialize<CheckoutSessionResponse>(responseContent, options);
-                
-                DebugLogger.WriteLine($"デシリアライズ結果: result={result != null}, CheckoutUrl={result?.CheckoutUrl ?? "null"}");
-                
-                if (result == null || string.IsNullOrWhiteSpace(result.CheckoutUrl))
-                {
-                    throw new Exception($"Checkout URLが取得できませんでした。レスポンス: {responseContent}");
-                }
-                return result.CheckoutUrl;
+                // サーバエラーの詳細はログにのみ残し、ユーザーにはシンプルなメッセージを表示
+                var errInfo = TryParseError(responseContent, options);
+                var internalDetail = errInfo.Detail ?? errInfo.Error ?? responseContent;
+                DebugLogger.WriteLine($"サーバエラー詳細: {internalDetail}");
+                throw new Exception("購入手続きメールの送信に失敗しました。しばらくしてから再度お試しください。");
             }
-            else
+
+            var dto = JsonSerializer.Deserialize<RequestCheckoutResponseDto>(responseContent, options);
+            if (dto == null || !dto.Success)
             {
-                throw new Exception($"Checkoutセッション作成エラー: {response.StatusCode} - {responseContent}");
+                DebugLogger.WriteLine($"success=false または解析失敗。レスポンス: {responseContent}");
+                throw new Exception("購入手続きメールの送信に失敗しました。");
             }
+
+            DebugLogger.WriteLine($"メール送信成功: emailMasked={dto.EmailMasked}");
+
+            return new RequestCheckoutResult
+            {
+                Success = true,
+                EmailMasked = string.IsNullOrWhiteSpace(dto.EmailMasked) ? maskedEmail : dto.EmailMasked,
+                Message = string.IsNullOrWhiteSpace(dto.Message)
+                    ? "お支払い用のメールを送信しました。"
+                    : dto.Message,
+            };
+        }
+        catch (InvalidOperationException)
+        {
+            // 入力バリデーションエラーはそのまま呼び出し元へ（ユーザー向けメッセージのまま）
+            throw;
         }
         catch (Exception ex)
         {
-            DebugLogger.WriteLine($"Checkoutセッション作成エラー: {ex.GetType().Name} - {ex.Message}");
+            DebugLogger.WriteLine($"購入手続きメール送信エラー: {ex.GetType().Name} - {ex.Message}");
             DebugLogger.WriteLine($"スタックトレース: {ex.StackTrace}");
             if (ex.InnerException != null)
             {
                 DebugLogger.WriteLine($"内部例外: {ex.InnerException.Message}");
             }
             throw;
+        }
+    }
+
+    private static string MaskEmail(string email)
+    {
+        var at = email.IndexOf('@');
+        return at > 0 ? $"{email[0]}***{email.Substring(at)}" : "***";
+    }
+
+    private static (string? Error, string? Detail) TryParseError(string body, JsonSerializerOptions options)
+    {
+        try
+        {
+            var err = JsonSerializer.Deserialize<ErrorResponseDto>(body, options);
+            return (err?.Error, err?.Detail);
+        }
+        catch
+        {
+            return (null, null);
         }
     }
 
@@ -131,12 +189,30 @@ public class PaymentService : IPaymentService
 }
 
 /// <summary>
-/// Checkoutセッション作成レスポンス
+/// request-checkout Edge Function の成功レスポンス（内部 DTO）
 /// </summary>
-public class CheckoutSessionResponse
+internal class RequestCheckoutResponseDto
 {
-    [JsonPropertyName("checkoutUrl")]
-    public string CheckoutUrl { get; set; } = string.Empty;
+    [JsonPropertyName("success")]
+    public bool Success { get; set; }
+
+    [JsonPropertyName("emailMasked")]
+    public string EmailMasked { get; set; } = string.Empty;
+
+    [JsonPropertyName("message")]
+    public string Message { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// Edge Function のエラーレスポンス（内部 DTO）
+/// </summary>
+internal class ErrorResponseDto
+{
+    [JsonPropertyName("error")]
+    public string? Error { get; set; }
+
+    [JsonPropertyName("detail")]
+    public string? Detail { get; set; }
 }
 
 /// <summary>

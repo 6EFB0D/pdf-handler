@@ -99,9 +99,6 @@ public partial class App : Application
         appSettings.Supabase.ServiceRoleKey = Environment.GetEnvironmentVariable("SUPABASE_SERVICE_ROLE_KEY") 
             ?? ""; // Service Role Keyは機密情報のため、環境変数から読み込む必要がある
         
-        // Premium版の公開設定（v1.0ではfalse）
-        appSettings.EnablePremiumPlan = false;
-
         // お問い合わせ先URL（サポート・ボリュームライセンス共通。環境変数で上書き可能）
         // ※ リリース前: 下記のプレースホルダーを実際のURLに差し替えること。docs/RELEASE_CHECKLIST.md 参照
         appSettings.ContactUrl = Environment.GetEnvironmentVariable("CONTACT_URL")
@@ -112,6 +109,10 @@ public partial class App : Application
             ?? appSettings.ProductPageUrl;
         appSettings.SurveyFormUrl = Environment.GetEnvironmentVariable("SURVEY_FORM_URL")
             ?? appSettings.SurveyFormUrl;
+
+        // HMACオフライン検証用の秘密鍵（LICENSE_SECRET_KEY が必須）
+        appSettings.LicenseSecretKey = Environment.GetEnvironmentVariable("LICENSE_SECRET_KEY")
+            ?? appSettings.LicenseSecretKey;
 
         services.AddSingleton(appSettings);
 
