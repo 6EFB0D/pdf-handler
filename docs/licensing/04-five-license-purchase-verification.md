@@ -121,7 +121,7 @@ Stripe決済と連携して自動で5キーを発行する場合:
 | `stripe-webhook` は 1キーのみ発行 | quantityに応じて5キーを一括発行するロジックを追加 |
 | licensesテーブル 1行=1キー | 5行をまとめてINSERT |
 
-実装の詳細は [05-license-pack-subscription-verification.md](./05-license-pack-subscription-verification.md) のデータベーススキーマ案を参照してください（サブスク版だが買い切りの場合も同様の考え方で拡張可能）。
+複数キー一括発行の設計メモは [05-license-pack-subscription-verification.md](./05-license-pack-subscription-verification.md) にあります（**本アプリでは未採用の参考文書**。買い切りパックは同様に「複数行 INSERT」で拡張する想定です）。
 
 ---
 

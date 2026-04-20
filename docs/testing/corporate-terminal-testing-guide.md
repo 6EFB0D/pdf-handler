@@ -26,8 +26,7 @@ Edge Functions 用の Secrets が設定されていること：
 
 - `STRIPE_SECRET_KEY`
 - `STRIPE_WEBHOOK_SECRET`
-- `STRIPE_PRICE_ID_PURCHASED`（買い切り）
-- `STRIPE_PRICE_ID_SUBSCRIPTION_STANDARD`（サブスク）
+- `STRIPE_PRICE_ID_PURCHASED`（買い切り・必須）
 - `APP_URL`（Checkout 成功/キャンセル後のリダイレクト先）
 
 ### 1.3 Stripe Webhook

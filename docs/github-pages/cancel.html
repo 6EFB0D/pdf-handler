@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>お支払いがキャンセルされました | Office Go Plan</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Hiragino Sans', 'Meiryo', sans-serif;
+      background: #f7f9f7;
+      color: #333;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+      max-width: 520px;
+      width: 100%;
+      padding: 48px 40px;
+      text-align: center;
+    }
+    .logo { margin-bottom: 32px; }
+    .logo img { width: 140px; }
+    .icon { font-size: 56px; margin-bottom: 16px; }
+    h1 {
+      font-size: 22px;
+      font-weight: bold;
+      color: #555;
+      margin-bottom: 16px;
+    }
+    .message {
+      font-size: 15px;
+      line-height: 1.8;
+      color: #666;
+      margin-bottom: 32px;
+    }
+    .actions { display: flex; flex-direction: column; gap: 12px; margin-bottom: 32px; }
+    .btn-primary {
+      display: block;
+      padding: 12px 24px;
+      background: #2e7d32;
+      color: #fff;
+      border-radius: 6px;
+      text-decoration: none;
+      font-size: 15px;
+    }
+    .btn-primary:hover { background: #1b5e20; }
+    .btn-secondary {
+      display: block;
+      padding: 12px 24px;
+      background: #fff;
+      color: #2e7d32;
+      border: 1px solid #2e7d32;
+      border-radius: 6px;
+      text-decoration: none;
+      font-size: 15px;
+    }
+    .btn-secondary:hover { background: #f1f8f1; }
+    hr { border: none; border-top: 1px solid #eee; margin: 24px 0; }
+    .support {
+      font-size: 13px;
+      color: #888;
+      line-height: 1.8;
+    }
+    .support a { color: #2e7d32; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo">
+      <img src="assets/logo/logo-a.jpg" alt="Office Go Plan">
+    </div>
+
+    <div class="icon">🔙</div>
+    <h1>お支払いがキャンセルされました</h1>
+
+    <p class="message">
+      お支払い手続きがキャンセルされました。<br>
+      購入を続ける場合は、下のボタンからお試しください。
+    </p>
+
+    <div class="actions">
+      <a href="https://6efb0d.github.io/office-goplan/" class="btn-primary">
+        購入ページへ戻る
+      </a>
+      <a href="mailto:support@office-goplan.com" class="btn-secondary">
+        サポートへ問い合わせる
+      </a>
+    </div>
+
+    <hr>
+
+    <div class="support">
+      ご不明な点がございましたら<br>
+      <a href="mailto:support@office-goplan.com">support@office-goplan.com</a> までお問い合わせください
+    </div>
+  </div>
+</body>
+</html>

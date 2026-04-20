@@ -7,7 +7,7 @@
 | ファイル | 内容 |
 |----------|------|
 | [04-five-license-purchase-verification.md](./04-five-license-purchase-verification.md) | 5ライセンス買い切り（請求書払い/ECパッケージ）の検証手順 |
-| [05-license-pack-subscription-verification.md](./05-license-pack-subscription-verification.md) | 5ライセンスパック（サブスク）の検証手順 |
+| [05-license-pack-subscription-verification.md](./05-license-pack-subscription-verification.md) | （参考）サブスク案の検証メモ。**本アプリでは未採用**（買い切りのみ） |
 | [06-legal-considerations-license-pack.md](./06-legal-considerations-license-pack.md) | 法的問題のチェック（特商法、消費者契約法等） |
 | [07-paid-license-agreement-supplement.md](./07-paid-license-agreement-supplement.md) | 契約書への追加記載文案 |
 

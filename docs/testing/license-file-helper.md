@@ -166,12 +166,9 @@ notepad "$env:APPDATA\PDFHandler\license.json"
 
 1. **JSON形式を正しく保つ**: カンマや引用符を正しく配置してください
 2. **日付形式**: `FirstLaunchDate`は`yyyy-MM-ddTHH:mm:ss`形式で指定してください
-3. **Plan値**: 
+3. **Plan値**（現在の製品は試用と買い切りのみ）:
    - `0` = Trial（試用期間）
    - `1` = StandardPurchased（買い切り）
-   - `2` = StandardSubscription（サブスクリプション）
-   - `3` = Premium
-   - `4` = PremiumBYOK
 4. **バックアップ**: 編集前に必ずバックアップを取ってください
 
 ## ライセンスファイルの例
@@ -184,7 +181,6 @@ notepad "$env:APPDATA\PDFHandler\license.json"
   "FirstLaunchDate": "2025-01-05T00:00:00",
   "HardwareId": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
   "ExpirationDate": null,
-  "SubscriptionRenewalDate": null,
   "ActivationDate": null,
   "LastVerificationDate": null,
   "NextVerificationDate": null
@@ -195,29 +191,14 @@ notepad "$env:APPDATA\PDFHandler\license.json"
 ```json
 {
   "Plan": 1,
-  "LicenseKey": "STD-PURCHASE-XXXXXXXX",
+  "LicenseKey": "PDFH-P101-A1B2C3D4E5F6G7H8I9J0K1L2M3-1A2B3C4D",
   "FirstLaunchDate": "2025-01-01T00:00:00",
   "HardwareId": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
   "ExpirationDate": null,
-  "SubscriptionRenewalDate": null,
+  "PurchasedVersion": "1",
   "ActivationDate": "2025-01-15T10:30:00",
   "LastVerificationDate": null,
   "NextVerificationDate": null
-}
-```
-
-### Standard版（サブスクリプション）
-```json
-{
-  "Plan": 2,
-  "LicenseKey": "STD-SUB-XXXXXXXX",
-  "FirstLaunchDate": "2025-01-01T00:00:00",
-  "HardwareId": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
-  "ExpirationDate": null,
-  "SubscriptionRenewalDate": "2026-01-15T10:30:00",
-  "ActivationDate": "2025-01-15T10:30:00",
-  "LastVerificationDate": "2025-01-15T10:30:00",
-  "NextVerificationDate": "2025-02-14T10:30:00"
 }
 ```
 

@@ -6,233 +6,97 @@
 - Windows: `%APPDATA%\PDFHandler\license.json`
 - パス例: `C:\Users\<ユーザー名>\AppData\Roaming\PDFHandler\license.json`
 
-### Supabaseダッシュボード
+### Supabase ダッシュボード
 - URL: https://supabase.com/dashboard/project/yzmjuotvkxcfnsgleyxl
 - 確認箇所:
-  - Table Editor → `licenses`テーブル
-  - Table Editor → `subscriptions`テーブル
-  - Table Editor → `license_activations`テーブル
+  - Table Editor → `licenses`
+  - Table Editor → `license_activations`
 
-### Stripeダッシュボード
+### Stripe ダッシュボード（テストモード）
 - URL: https://dashboard.stripe.com/test/dashboard
 - 確認箇所:
   - Customers（顧客）
-  - Subscriptions（サブスクリプション）
   - Payments（支払い）
 
+本プロダクトは **買い切り（一回払い）のみ** です。Webhook は `checkout.session.completed` のみを利用し、`subscriptions` テーブルは用いません。
+
 ---
 
-## テスト1: Standardサブスク契約を開始
+## テスト1: 買い切り版を購入
 
 ### アプリ側の操作
 1. アプリを起動
 2. 「ヘルプ」→「購入」をクリック
-3. 「Standard版（サブスクリプション）」セクションの「サブスクリプションを開始」ボタンをクリック
-4. ブラウザでStripe Checkoutページが開くことを確認
+3. 「Standard版（買い切り）」の「購入する」ボタンをクリック
+4. ブラウザで Stripe Checkout が開くことを確認
 
-### Stripe側の操作（テストモード）
-1. Stripe Checkoutページで以下のテストカード情報を入力:
+### Stripe 側の操作（テストモード）
+1. テストカード例:
    - カード番号: `4242 4242 4242 4242`
    - 有効期限: 任意の未来の日付（例: `12/34`）
    - CVC: 任意の3桁（例: `123`）
    - 郵便番号: 任意（例: `12345`）
-2. 「購入を完了」ボタンをクリック
-3. 成功ページが表示されることを確認
+2. 「購入を完了」をクリックし、成功ページを確認
 
-### Supabase側の確認
-1. Supabaseダッシュボードを開く
-2. 「Table Editor」→「licenses」テーブルを開く
-3. 以下の内容を確認:
-   - `license_key`: `PDFH-`で始まる32文字のキーが生成されている
-   - `plan`: `subscription_standard`
-   - `user_email`: Stripeで入力したメールアドレス
-   - `stripe_customer_id`: Stripeの顧客ID
-   - `stripe_subscription_id`: StripeのサブスクリプションID
-   - `is_active`: `true`
-4. 「subscriptions」テーブルを開く
-5. 以下の内容を確認:
-   - `stripe_subscription_id`: licensesテーブルと同じID
-   - `status`: `active`
-   - `current_period_start`: 現在の日時
-   - `current_period_end`: 1年後の日時
-   - `cancel_at_period_end`: `false`
-
-### アプリ側の確認
-1. アプリに戻る
-2. 「ヘルプ」→「バージョン情報」→「ライセンス」をクリック
-3. ライセンス情報ダイアログで以下を確認:
-   - プラン: 「Standard版（サブスクリプション）」
-   - ステータス: 「ライセンス有効」
-   - サブスクリプション更新日: 1年後の日付が表示される
-
----
-
-## テスト2: サブスクを解除
-
-### Stripe側の操作
-1. Stripeダッシュボードを開く
-2. 「Customers」をクリック
-3. テスト1で作成した顧客を選択
-4. 「Subscriptions」タブを開く
-5. アクティブなサブスクリプションの「...」メニューをクリック
-6. 「Cancel subscription」を選択
-7. キャンセル理由を選択（任意）
-8. 「Cancel subscription」ボタンをクリック
-
-### Supabase側の確認
-1. Supabaseダッシュボードを開く
-2. 「Table Editor」→「subscriptions」テーブルを開く
-3. 該当するサブスクリプションの`status`が`canceled`になっていることを確認
-4. `cancel_at_period_end`が`true`になっている場合、期間終了時にキャンセルされる
-
-### アプリ側の確認
-1. アプリを再起動
-2. 「ヘルプ」→「バージョン情報」→「ライセンス」をクリック
-3. ライセンス検証が実行される（30日ごと）
-4. サブスクリプションがキャンセルされている場合、ライセンスが無効になる可能性がある
-
-### 注意事項
-- 現在の実装では、Stripe Webhookでサブスクリプションのキャンセルを検知する機能が未実装の可能性があります
-- 手動でSupabaseの`subscriptions`テーブルの`status`を`canceled`に変更してテストすることも可能です
-
----
-
-## テスト3: 買い切り版を購入
-
-### アプリ側の操作
-1. アプリを起動
-2. 「ヘルプ」→「購入」をクリック
-3. 「Standard版（買い切り）」セクションの「購入する」ボタンをクリック
-4. ブラウザでStripe Checkoutページが開くことを確認
-
-### Stripe側の操作（テストモード）
-1. Stripe Checkoutページで以下のテストカード情報を入力:
-   - カード番号: `4242 4242 4242 4242`
-   - 有効期限: 任意の未来の日付（例: `12/34`）
-   - CVC: 任意の3桁（例: `123`）
-   - 郵便番号: 任意（例: `12345`）
-2. 「購入を完了」ボタンをクリック
-3. 成功ページが表示されることを確認
-
-### Supabase側の確認
-1. Supabaseダッシュボードを開く
-2. 「Table Editor」→「licenses」テーブルを開く
-3. 以下の内容を確認:
-   - `license_key`: `PDFH-`で始まる32文字のキーが生成されている
+### Supabase 側の確認
+1. 「Table Editor」→ `licenses` を開く
+2. 次を確認:
+   - `license_key`: `PDFH-P101-` で始まる **新形式（28文字シリアル + HMAC）** または旧 32 文字形式
    - `plan`: `purchased`
-   - `user_email`: Stripeで入力したメールアドレス
-   - `stripe_customer_id`: Stripeの顧客ID
-   - `stripe_payment_intent_id`: Stripeの支払いインテントID
-   - `expiration_date`: `null`（買い切り版は有効期限なし）
+   - `user_email`: Checkout で入力したメール
+   - `stripe_customer_id` / `stripe_payment_intent_id`: 値が入っていること
+   - `expiration_date`: `null`（買い切りは期限なし）
    - `is_active`: `true`
 
 ### アプリ側の確認
-1. アプリに戻る
-2. 「ヘルプ」→「バージョン情報」→「ライセンス」をクリック
-3. ライセンス情報ダイアログで以下を確認:
-   - プラン: 「Standard版（買い切り）」
-   - ステータス: 「ライセンス有効」
+1. メールに届いたキー、または Supabase の `license_key` をコピー
+2. 「ヘルプ」→「ライセンス」でキーを入力しアクティベート
+3. 「ヘルプ」→「バージョン情報」→「ライセンス」で **Standard版（買い切り）** と有効であることを確認
 
 ---
 
-## テスト4: ライセンスを削除
+## テスト2: ライセンスファイルを削除（トライアルへ戻す）
 
 ### アプリ側の操作
 1. アプリを終了
-2. エクスプローラーで `%APPDATA%\PDFHandler\` フォルダを開く
-3. `license.json`ファイルを削除またはリネーム
-
-### Supabase側の操作（オプション）
-1. Supabaseダッシュボードを開く
-2. 「Table Editor」→「licenses」テーブルを開く
-3. 該当するライセンスの行を選択
-4. 「Delete」ボタンをクリック（またはSQL Editorで削除）
+2. `%APPDATA%\PDFHandler\` の `license.json` を削除またはリネーム
 
 ### アプリ側の確認
 1. アプリを再起動
-2. アプリが自動的に14日間のトライアルを開始することを確認
-3. 「ヘルプ」→「バージョン情報」→「ライセンス」をクリック
-4. プランが「試用期間中」になっていることを確認
+2. 14 日トライアルが開始されること
+3. 「ライセンス」でプランが「試用期間中」であること
 
 ---
 
-## テスト5: 14日間トライアルに戻る（残日数保持）
+## テスト3: 14日トライアルに戻る（残日数を編集）
 
-### アプリ側の操作
-1. アプリを終了
-2. エクスプローラーで `%APPDATA%\PDFHandler\license.json` を開く（テキストエディタで）
-3. 以下のように編集:
+1. アプリを終了し、`license.json` をテキストで開く
+2. 例:
    ```json
    {
      "Plan": 0,
      "LicenseKey": null,
      "FirstLaunchDate": "2025-01-01T00:00:00",
-     "HardwareId": "<既存のHardwareIdを保持>"
+     "HardwareId": "<既存の HardwareId を保持>"
    }
    ```
-   - `Plan`: `0`（Trial）
-   - `FirstLaunchDate`: 残日数を保持したい日付（例: 10日前なら `DateTime.Now.AddDays(-4)` の日付）
-   - `LicenseKey`: `null`に設定
-4. ファイルを保存
-
-### アプリ側の確認
-1. アプリを起動
-2. 「ヘルプ」→「バージョン情報」→「ライセンス」をクリック
-3. プランが「試用期間中」になっていることを確認
-4. 残り日数が正しく表示されることを確認（例: 10日前なら残り4日）
+3. `Plan`: `0`（Trial）。`FirstLaunchDate` で残日数を調整
+4. 保存後、アプリを起動して表示を確認
 
 ---
 
-## テスト6: 開発用 - 残日数0設定と残日数14日へ戻す方法
+## テスト4: 開発用 — 残日数 0 / 14 への切り替え
 
-### 残日数0に設定する方法
-
-#### 方法1: FirstLaunchDateを14日前に設定
-1. アプリを終了
-2. `%APPDATA%\PDFHandler\license.json` を開く
-3. 以下のように編集:
-   ```json
-   {
-     "Plan": 0,
-     "LicenseKey": null,
-     "FirstLaunchDate": "2025-01-01T00:00:00",
-     "HardwareId": "<既存のHardwareIdを保持>"
-   }
-   ```
-   - `FirstLaunchDate`: 現在の日時から14日前の日時を設定
-   - 例: 今日が2025年1月15日なら、`2025-01-01T00:00:00`（14日前）
-
-#### 方法2: FirstLaunchDateを15日前以降に設定
-- 15日前以降に設定すると、残日数は0日になる
-
-### 残日数14日に戻す方法
-
-1. アプリを終了
-2. `%APPDATA%\PDFHandler\license.json` を開く
-3. 以下のように編集:
-   ```json
-   {
-     "Plan": 0,
-     "LicenseKey": null,
-     "FirstLaunchDate": "2025-01-15T00:00:00",
-     "HardwareId": "<既存のHardwareIdを保持>"
-   }
-   ```
-   - `FirstLaunchDate`: 現在の日時を設定
-   - 例: 今日が2025年1月15日なら、`2025-01-15T00:00:00`
-
-### アプリ側の確認
-1. アプリを起動
-2. 「ヘルプ」→「バージョン情報」→「ライセンス」をクリック
-3. 残り日数が正しく表示されることを確認
+- スクリプト: `docs/testing/` 配下の `SetRemainingDays.ps1` 等があれば利用
+- またはテスト3と同様に `FirstLaunchDate` を現在から 14 日前（残り0）／当日（残り14）に設定
 
 ---
 
-## 便利なSQLクエリ（Supabase）
+## 便利な SQL（Supabase）
 
-### ライセンス一覧を確認
+### ライセンス一覧
 ```sql
-SELECT 
+SELECT
     license_key,
     plan,
     user_email,
@@ -243,85 +107,31 @@ FROM licenses
 ORDER BY created_at DESC;
 ```
 
-### サブスクリプション一覧を確認
+### ライセンス削除（テスト環境のみ）
 ```sql
-SELECT 
-    s.stripe_subscription_id,
-    s.status,
-    s.current_period_start,
-    s.current_period_end,
-    s.cancel_at_period_end,
-    l.license_key,
-    l.plan,
-    l.user_email
-FROM subscriptions s
-JOIN licenses l ON s.license_id = l.id
-ORDER BY s.created_at DESC;
+-- 関連する license_activations は FK で連動削除される想定
+DELETE FROM licenses WHERE license_key = 'PDFH-P101-...';
 ```
 
-### ライセンスを削除（テスト用）
+### ライセンス無効化（テスト用）
 ```sql
--- 注意: 関連するlicense_activationsとsubscriptionsも自動的に削除されます（CASCADE）
-DELETE FROM licenses WHERE license_key = 'PDFH-XXXXXXXX';
-```
-
-### サブスクリプションをキャンセル状態に変更（テスト用）
-```sql
-UPDATE subscriptions 
-SET status = 'canceled', cancel_at_period_end = true
-WHERE stripe_subscription_id = 'sub_xxxxxxxxxxxxx';
-```
-
-### ライセンスを無効化（テスト用）
-```sql
-UPDATE licenses 
+UPDATE licenses
 SET is_active = false
-WHERE license_key = 'PDFH-XXXXXXXX';
+WHERE license_key = 'PDFH-P101-...';
 ```
 
 ---
 
 ## トラブルシューティング
 
-### ライセンスファイルが見つからない場合
-- パス: `%APPDATA%\PDFHandler\license.json`
-- ファイルが存在しない場合は、アプリを起動すると自動的に作成されます
+### Webhook が動作しない
+1. Stripe → Developers → Webhooks で `checkout.session.completed` のみ登録されているか
+2. Supabase Edge Function `stripe-webhook` のログを確認
 
-### Stripe Webhookが動作しない場合
-1. Stripeダッシュボードで「Developers」→「Webhooks」を開く
-2. Webhookエンドポイントのログを確認
-3. Supabase Edge Functionのログを確認:
-   - Supabaseダッシュボード → 「Edge Functions」→「stripe-webhook」→「Logs」
+### ライセンス検証が失敗する
+1. `verify-license` のログを確認
+2. キーが `licenses.license_key` と一致（正規化後）しているか
+3. `is_active` が `true` か
 
-### ライセンス検証が失敗する場合
-1. Supabase Edge Functionのログを確認:
-   - Supabaseダッシュボード → 「Edge Functions」→「verify-license」→「Logs」
-2. アプリのデバッグ出力を確認（Visual Studioの出力ウィンドウ）
-
-### ハードウェアIDが変更された場合
-- ハードウェアIDはマシン固有のIDです
-- ハードウェアIDが変更されると、ライセンスは自動的に試用期間にリセットされます
-- これは意図的な動作です（1ライセンスにつき最大3デバイスまで）
-
----
-
-## テスト用ライセンスキーの形式
-
-- 形式: `PDFH-` + 32文字の英数字（大文字）
-- 例: `PDFH-A1B2C3D4E5F6G7H8I9J0K1L2M3N4O5P6`
-
-### テスト用ライセンスキーを手動で生成（Supabase SQL Editor）
-```sql
-SELECT 'PDFH-' || UPPER(REPLACE(gen_random_uuid()::TEXT, '-', ''));
-```
-
----
-
-## 注意事項
-
-1. **テストモード**: Stripeのテストモードを使用してください（本番モードでは実際に課金されます）
-2. **データ削除**: テスト後は不要なライセンスデータを削除してください
-3. **ハードウェアID**: ハードウェアIDはマシン固有のため、別のPCでは異なるIDになります
-4. **ライセンスファイル**: ライセンスファイルを直接編集する場合は、JSON形式を正しく保つ必要があります
-
-
+### 決済ページが開かない
+- [checkout-debugging.md](../troubleshooting/checkout-debugging.md) を参照

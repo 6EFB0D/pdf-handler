@@ -69,9 +69,7 @@ appSettings.ContactUrl = Environment.GetEnvironmentVariable("CONTACT_URL")
 
 Supabase Edge Functions の環境変数で設定。本番用の Price ID などを確認：
 
-- `STRIPE_PRICE_ID_PURCHASED`
-- `STRIPE_PRICE_ID_SUBSCRIPTION_STANDARD`
-- `STRIPE_PRICE_ID_SUBSCRIPTION_PREMIUM`
+- `STRIPE_PRICE_ID_PURCHASED`（買い切り・必須）
 - `APP_URL`（Checkout 成功/キャンセル後のリダイレクト先）
 
 ---

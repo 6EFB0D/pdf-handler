@@ -2,7 +2,7 @@
 
 ## 問題の症状
 
-「サブスクリプションを開始」や「購入する」ボタンをクリックしても、ブラウザが起動しない、または「Checkout URLが取得できませんでした」というエラーが表示される。
+「購入する」ボタンをクリックしてもブラウザが起動しない、または「Checkout URLが取得できませんでした」というエラーが表示される。
 
 ## デバッグ出力の確認方法
 
@@ -14,11 +14,11 @@
 4. 購入ボタンをクリック
 5. 出力ウィンドウに以下のようなログが表示されます：
    ```
-   === サブスクリプション開始 ===
+   === Checkout セッション作成 ===
    Supabase URL: https://yzmjuotvkxcfnsgleyxl.supabase.co
    AnonKey設定: True
    リクエストURL: https://yzmjuotvkxcfnsgleyxl.supabase.co/functions/v1/create-checkout-session
-   リクエストボディ: {"plan":"StandardSubscription","isSubscription":true}
+   リクエストボディ: {"plan":"StandardPurchased","appId":"PDFH"}
    レスポンスステータス: 200 OK
    レスポンス内容: {"checkoutUrl":"https://checkout.stripe.com/..."}
    Checkout URL取得: True
@@ -51,8 +51,7 @@ dotnet run --project src/PdfHandler.UI/PdfHandler.UI.csproj
    - Supabaseダッシュボード → 「Edge Functions」→「create-checkout-session」
 2. 環境変数が正しく設定されているか確認
    - `STRIPE_SECRET_KEY`
-   - `STRIPE_PRICE_ID_SUBSCRIPTION_STANDARD`
-   - `STRIPE_PRICE_ID_PURCHASED`
+   - `STRIPE_PRICE_ID_PURCHASED`（買い切り）
 3. Edge Functionのログを確認
    - Supabaseダッシュボード → 「Edge Functions」→「create-checkout-session」→「Logs」
 
@@ -63,16 +62,14 @@ dotnet run --project src/PdfHandler.UI/PdfHandler.UI.csproj
 
 ### エラー2: "customer_creation' can only be used in `payment` mode"
 
-**原因**: Supabase にデプロイ済みの `create-checkout-session` が古いバージョンのまま。サブスクリプション（subscription モード）では `customer_creation` を指定できず、payment モードのみで有効。
+**原因**: Supabase にデプロイ済みの `create-checkout-session` が古いバージョンのまま。`customer_creation` は **mode: payment**（買い切り）でのみ有効です。
 
-**対処法**: Edge Function を再デプロイする。
+**対処法**: リポジトリの最新版で Edge Function を再デプロイする。
 
 ```powershell
 cd プロジェクトディレクトリ
-npx supabase functions deploy create-checkout-session
+npx supabase functions deploy create-checkout-session --no-verify-jwt
 ```
-
-※ 最新の `create-checkout-session` では、`customer_creation` を payment モード（買い切り）のときのみ付与するよう修正済み。
 
 ### エラー3: "Checkoutセッション作成エラー: 401 Unauthorized"
 
@@ -166,8 +163,8 @@ npx supabase functions deploy create-checkout-session --project-ref yzmjuotvkxcf
 ```powershell
 # PowerShellでテスト
 $body = @{
-    plan = "StandardSubscription"
-    isSubscription = $true
+    plan = "StandardPurchased"
+    appId = "PDFH"
 } | ConvertTo-Json
 
 $headers = @{
