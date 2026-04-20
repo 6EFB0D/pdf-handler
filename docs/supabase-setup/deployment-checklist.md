@@ -44,10 +44,7 @@ Supabaseダッシュボード → Settings → Edge Functions → Secrets で以
 
 - [ ] `STRIPE_SECRET_KEY` （Stripeのシークレットキー）
 - [ ] `STRIPE_WEBHOOK_SECRET` （Stripe Webhookのシークレット）
-- [ ] `STRIPE_PRICE_ID_PURCHASED` （買い切り版のPrice ID）
-- [ ] `STRIPE_PRICE_ID_SUBSCRIPTION_STANDARD` （StandardサブスクのPrice ID）
-- [ ] `STRIPE_PRICE_ID_SUBSCRIPTION_PREMIUM` （PremiumサブスクのPrice ID）
-- [ ] `ENABLE_PREMIUM_PLAN` （`true`または`false`）
+- [ ] `STRIPE_PRICE_ID_PURCHASED` （買い切り版のPrice ID・必須）
 - [ ] `APP_URL` （アプリケーションのURL）
 - [ ] `RESEND_API_KEY` （ライセンスメール送信用、Resend の API キー）
 - [ ] `LICENSE_EMAIL_FROM` （送信元メール、例: `PDFハンドラ <noreply@yourdomain.com>`）
@@ -132,11 +129,7 @@ supabase functions deploy stripe-webhook --project-ref yzmjuotvkxcfnsgleyxl
 
 - [ ] Webhook エンドポイントが設定されている
   - URL: `https://yzmjuotvkxcfnsgleyxl.supabase.co/functions/v1/stripe-webhook`
-- [ ] 以下のイベントが設定されている：
-  - [ ] `checkout.session.completed`
-  - [ ] `customer.subscription.updated`
-  - [ ] `customer.subscription.deleted`
-  - [ ] `invoice.payment_succeeded`
+- [ ] イベント `checkout.session.completed` のみが設定されている
 - [ ] Signing secret がコピーされている
 - [ ] Supabase の `STRIPE_WEBHOOK_SECRET` に設定されている
 

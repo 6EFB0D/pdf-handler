@@ -2,7 +2,7 @@
 // 指定デバイスのアクティベーションを解除（ライセンス管理ダイアログ用）
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "@supabase/supabase-js";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
@@ -93,7 +93,7 @@ serve(async (req) => {
     if (updateError) {
       console.error("deactivate-device update error:", updateError);
       return new Response(
-        JSON.stringify({ error: updateError.message }),
+        JSON.stringify({ error: "Internal server error" }),
         { status: 500, headers: corsHeaders }
       );
     }
@@ -121,7 +121,7 @@ serve(async (req) => {
   } catch (error) {
     console.error("deactivate-device:", error);
     return new Response(
-      JSON.stringify({ error: (error as Error).message }),
+      JSON.stringify({ error: "Internal server error" }),
       { status: 500, headers: corsHeaders }
     );
   }

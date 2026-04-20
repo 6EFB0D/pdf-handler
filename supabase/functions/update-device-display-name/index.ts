@@ -2,7 +2,7 @@
 // アクティベーションの display_name を更新（ライセンス管理ダイアログ用）
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "@supabase/supabase-js";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
@@ -32,6 +32,13 @@ serve(async (req) => {
     if (!licenseKey || !hardwareId || !activationId) {
       return new Response(
         JSON.stringify({ error: "ライセンスキー、ハードウェアID、アクティベーションIDが必要です" }),
+        { status: 400, headers: corsHeaders }
+      );
+    }
+
+    if ((displayName ?? "").length > 50) {
+      return new Response(
+        JSON.stringify({ error: "表示名は50文字以内にしてください" }),
         { status: 400, headers: corsHeaders }
       );
     }
@@ -94,7 +101,7 @@ serve(async (req) => {
     if (updateError) {
       console.error("update-device-display-name error:", updateError);
       return new Response(
-        JSON.stringify({ error: updateError.message }),
+        JSON.stringify({ error: "Internal server error" }),
         { status: 500, headers: corsHeaders }
       );
     }
@@ -106,7 +113,7 @@ serve(async (req) => {
   } catch (error) {
     console.error("update-device-display-name:", error);
     return new Response(
-      JSON.stringify({ error: (error as Error).message }),
+      JSON.stringify({ error: "Internal server error" }),
       { status: 500, headers: corsHeaders }
     );
   }

@@ -10,6 +10,8 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "
 interface RequestBody {
   licenseKey: string;
   hardwareId: string;
+  deviceName?: string; // アクティベーション時の PC 名（Environment.MachineName）
+  appVersion?: string; // アプリのバージョン（例: "1.0.0"）、初回アクティベーション時に purchased_version 設定に使用
 }
 
 serve(async (req) => {
@@ -25,7 +27,7 @@ serve(async (req) => {
       });
     }
 
-    const { licenseKey, hardwareId }: RequestBody = await req.json();
+    const { licenseKey, hardwareId, deviceName, appVersion }: RequestBody = await req.json();
 
     if (!licenseKey || !hardwareId) {
       return new Response(
@@ -42,11 +44,14 @@ serve(async (req) => {
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
+    // ライセンスキーを正規化（4桁区切り入力・表示形式対応）
+    const normalizedKey = normalizeLicenseKey(licenseKey) || licenseKey;
+
     // ライセンスを検索
     const { data: license, error: licenseError } = await supabase
       .from("licenses")
       .select("*")
-      .eq("license_key", licenseKey)
+      .eq("license_key", normalizedKey)
       .eq("is_active", true)
       .single();
 
@@ -68,54 +73,7 @@ serve(async (req) => {
 
     // 買い切り版の場合は常に有効
     if (license.plan === "purchased") {
-      // 最終検証日時を更新
-      await supabase
-        .from("licenses")
-        .update({ last_verification_date: new Date().toISOString() })
-        .eq("id", license.id);
-
-      return new Response(
-        JSON.stringify({
-          isValid: true,
-          plan: license.plan,
-          expirationDate: license.expiration_date,
-          subscriptionRenewalDate: license.subscription_renewal_date,
-          lastVerificationDate: new Date().toISOString(),
-          nextVerificationDate: null, // 買い切り版は検証不要
-        }),
-        {
-          headers: {
-            "Content-Type": "application/json",
-            "Access-Control-Allow-Origin": "*",
-          },
-        }
-      );
-    }
-
-    // サブスクリプション版の場合は有効期限をチェック
-    if (license.plan === "subscription_standard" || license.plan === "subscription_premium") {
-      const now = new Date();
-      const renewalDate = license.subscription_renewal_date
-        ? new Date(license.subscription_renewal_date)
-        : null;
-
-      if (!renewalDate || now > renewalDate) {
-        return new Response(
-          JSON.stringify({
-            isValid: false,
-            errorMessage: "サブスクリプションの有効期限が切れています",
-          }),
-          {
-            status: 200,
-            headers: {
-              "Content-Type": "application/json",
-              "Access-Control-Allow-Origin": "*",
-            },
-          }
-        );
-      }
-
-      // ハードウェアIDのアクティベーションをチェック
+      // ハードウェアIDのアクティベーションをチェック・登録
       const { data: activation } = await supabase
         .from("license_activations")
         .select("*")
@@ -125,12 +83,26 @@ serve(async (req) => {
         .single();
 
       if (!activation) {
-        // アクティベーションが存在しない場合は作成（デバイス数制限チェックあり）
+        // 初回アクティベーション: purchased_version が未設定なら設定
+        let purchasedVersion = license.purchased_version;
+        if (!purchasedVersion) {
+          purchasedVersion = parsePurchasedVersionFromKey(license.license_key) ?? getMajorFromAppVersion(appVersion) ?? "1";
+          await supabase
+            .from("licenses")
+            .update({ purchased_version: purchasedVersion })
+            .eq("id", license.id)
+            .then(() => {})
+            .catch(() => {});
+          license.purchased_version = purchasedVersion;
+        }
+
+        // アクティベーションが存在しない場合は作成
         const { error: activationError } = await supabase
           .from("license_activations")
           .insert({
             license_id: license.id,
             hardware_id: hardwareId,
+            device_name: deviceName ?? null,
             activation_date: new Date().toISOString(),
             last_verification_date: new Date().toISOString(),
             is_active: true,
@@ -151,33 +123,48 @@ serve(async (req) => {
             }
           );
         }
+
+        // activation_countを更新（カラムが存在する場合）
+        const { count } = await supabase
+          .from("license_activations")
+          .select("*", { count: "exact", head: true })
+          .eq("license_id", license.id)
+          .eq("is_active", true);
+        if (count !== null) {
+          await supabase
+            .from("licenses")
+            .update({ activation_count: count })
+            .eq("id", license.id)
+            .then(() => {})
+            .catch(() => {}); // カラムが存在しない場合は無視
+        }
       } else {
-        // アクティベーションが存在する場合は最終検証日時を更新
+        // アクティベーションが存在する場合は最終検証日時を更新（device_name も更新可能）
+        const updatePayload: Record<string, unknown> = { last_verification_date: new Date().toISOString() };
+        if (deviceName != null) {
+          updatePayload.device_name = deviceName;
+        }
         await supabase
           .from("license_activations")
-          .update({ last_verification_date: new Date().toISOString() })
+          .update(updatePayload)
           .eq("id", activation.id);
       }
 
-      // ライセンスの最終検証日時を更新
-      const nextVerificationDate = new Date();
-      nextVerificationDate.setDate(nextVerificationDate.getDate() + 30);
-
+      // 最終検証日時を更新
       await supabase
         .from("licenses")
-        .update({
-          last_verification_date: new Date().toISOString(),
-        })
+        .update({ last_verification_date: new Date().toISOString() })
         .eq("id", license.id);
 
+      const pv = license.purchased_version ?? parsePurchasedVersionFromKey(license.license_key);
       return new Response(
         JSON.stringify({
           isValid: true,
           plan: license.plan,
+          purchasedVersion: pv ?? null,
           expirationDate: license.expiration_date,
-          subscriptionRenewalDate: license.subscription_renewal_date,
           lastVerificationDate: new Date().toISOString(),
-          nextVerificationDate: nextVerificationDate.toISOString(),
+          nextVerificationDate: null,
         }),
         {
           headers: {
@@ -191,7 +178,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         isValid: false,
-        errorMessage: "無効なライセンスプランです",
+        errorMessage: "無効なライセンスプランです（買い切りライセンスのみ対応）",
       }),
       {
         status: 200,
@@ -216,5 +203,46 @@ serve(async (req) => {
   }
 });
 
+/**
+ * ライセンスキーを正規化（4桁区切り入力→標準形式）
+ * PDFH-P101-A1B2-C3D4-...-M3-1A2B → PDFH-P101-A1B2C3D4...-1A2B
+ */
+function normalizeLicenseKey(key: string): string | null {
+  if (!key || typeof key !== "string") return null;
+  const trimmed = key.trim().toUpperCase();
+  const parts = trimmed.split("-");
+  if (parts.length < 3) return null;
+  const prefix = parts[0];
+  if (!prefix || !/^[A-Z0-9]+$/.test(prefix)) return null;
 
+  const formCode = parts[1];
+  if (formCode.length !== 4) return null;
 
+  // HMAC形式: {app_id}-P101-{serial(28)}-{hmac} （最後がHMAC、その前がシリアル）
+  if (parts.length >= 5) {
+    const serialPart = parts.slice(2, -1).join("");
+    const hmacPart = parts[parts.length - 1];
+    if (serialPart.length === 28 && /^[0-9A-F]+$/.test(serialPart) && /^[0-9A-F]+$/.test(hmacPart)) {
+      return `${prefix}-${formCode}-${serialPart}-${hmacPart}`;
+    }
+  }
+
+  // 旧形式: {app_id}-P101-28文字（4桁区切り入力時は複数パーツ）
+  const serialPartLegacy = parts.slice(2).join("");
+  if (serialPartLegacy.length === 28 && /^[0-9A-F]+$/.test(serialPartLegacy)) {
+    return `${prefix}-${formCode}-${serialPartLegacy}`;
+  }  return null;
+}
+
+/** 新形式 PDFH-P101-xxx から purchased_version を取得。旧形式は null */
+function parsePurchasedVersionFromKey(key: string): string | null {
+  const m = key.match(/^PDFH-(P[12])(\d{2})-/);
+  if (!m) return null;
+  const ver = m[2];
+  return ver === "00" ? null : String(parseInt(ver, 10));
+}/** appVersion "1.0.0" からメジャー "1" を取得 */
+function getMajorFromAppVersion(appVersion?: string): string | null {
+  if (!appVersion || typeof appVersion !== "string") return null;
+  const m = appVersion.trim().match(/^(\d+)/);
+  return m ? m[1] : null;
+}

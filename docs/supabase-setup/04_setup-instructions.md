@@ -23,7 +23,7 @@
 
 ### 既存データベースをお使いの場合（activation_count等の追加）
 
-既に`01_database-schema.sql`でテーブルを作成済みの場合は、`08_add-activation-count-and-subscription-renewal.sql`を実行してカラムを追加してください。
+既に`01_database-schema.sql`でテーブルを作成済みの場合は、`08_add-activation-count.sql`を実行して `activation_count` カラムを追加してください。
 
 ## 手順3: Stripe Products & Pricesの作成
 
@@ -35,29 +35,19 @@
 - **Name**: `PDF Handler - 買い切り版`
 - **Description**: `PDF Handler Standard版（買い切り）`
 - **Pricing**: `One-time`
-- **Price**: `3,480 JPY`
+- **Price**: `3,850 JPY`（税込。Stripe は税込の単一価格として設定）
 - 「Save product」をクリック
 - **Price ID**をコピー（例: `price_xxxxx`）
 
-### Standardサブスクリプション版の作成
+ライセンスは**買い切り（One-time）のみ**です。Stripe にサブスクリプション用 Product は不要です。
 
-- **Name**: `PDF Handler - サブスクリプション版 (Standard)`
-- **Description**: `PDF Handler Standard版（サブスクリプション）`
-- **Pricing**: `Recurring`
-- **Price**: `1,600 JPY`
-- **Billing period**: `Yearly`
-- 「Save product」をクリック
-- **Price ID**をコピー（例: `price_xxxxx`）
+### 推奨: `purchased_version` と `app_id`
 
-### Premiumサブスクリプション版の作成（非公開）
+`09_add-purchased-version.sql` → `10_add_app_id.sql` を SQL Editor で実行してください。
 
-- **Name**: `PDF Handler - サブスクリプション版 (Premium)`
-- **Description**: `PDF Handler Premium版（サブスクリプション）`
-- **Pricing**: `Recurring`
-- **Price**: `4,880 JPY`
-- **Billing period**: `Yearly`
-- 「Save product」をクリック
-- **Price ID**をコピー（例: `price_xxxxx`）
+### 旧スキーマ（`subscriptions` テーブルあり）からの移行
+
+過去の手順で `subscriptions` を作成済みの場合は `12_remove_subscription_model.sql` を実行してください。
 
 ## 手順4: Supabase Edge Functionsのデプロイ
 
@@ -126,18 +116,18 @@ supabase link --project-ref yzmjuotvkxcfnsgleyxl
 
 Supabaseダッシュボードで以下を設定：
 
-1. 「Settings」→「Edge Functions」→「Secrets」を開く
-2. 以下のシークレットを追加：
+1. **「Project Settings」**（歯車アイコン）→ **「Edge Functions」** → **「Secrets」** を開く
+2. 「Add new secret」で以下のシークレットを追加：
 
 ```
 STRIPE_SECRET_KEY=sk_test_xxxxx（Stripeのシークレットキー）
 STRIPE_WEBHOOK_SECRET=whsec_xxxxx（Stripe Webhookのシークレット）
-STRIPE_PRICE_ID_PURCHASED=price_xxxxx（買い切り版のPrice ID）
-STRIPE_PRICE_ID_SUBSCRIPTION_STANDARD=price_xxxxx（StandardサブスクのPrice ID）
-STRIPE_PRICE_ID_SUBSCRIPTION_PREMIUM=price_xxxxx（PremiumサブスクのPrice ID）
-ENABLE_PREMIUM_PLAN=false（Premium版の公開フラグ）
+STRIPE_PRICE_ID_PURCHASED=price_xxxxx（買い切り版のPrice ID・必須）
+LICENSE_SECRET_KEY=xxxxx（HMAC署名用。32文字以上のランダム英数字。詳細は LICENSE_SECRET_KEY-setup.md）
 APP_URL=https://your-app-url.com（アプリケーションのURL、開発中はhttp://localhost:3000）
 ```
+
+**LICENSE_SECRET_KEY の詳細**: [LICENSE_SECRET_KEY-setup.md](LICENSE_SECRET_KEY-setup.md)
 
 ### 4.5 Edge Functionsのデプロイ
 
@@ -181,11 +171,7 @@ supabase functions deploy stripe-webhook --project-ref yzmjuotvkxcfnsgleyxl
    ```
    https://yzmjuotvkxcfnsgleyxl.supabase.co/functions/v1/stripe-webhook
    ```
-4. **Events to send**で以下を選択：
-   - `checkout.session.completed`
-   - `customer.subscription.updated`
-   - `customer.subscription.deleted`
-   - `invoice.payment_succeeded`
+4. **Events to send**で **`checkout.session.completed` のみ**を選択
 5. 「Add endpoint」をクリック
 6. **Signing secret**をコピー（`whsec_xxxxx`）
 7. 手順4.4で設定した`STRIPE_WEBHOOK_SECRET`にこの値を設定
@@ -213,8 +199,7 @@ var appSettings = new AppSettings
     Stripe = new StripeSettings
     {
         // Edge Functionsで処理するため、クライアント側では不要
-    },
-    EnablePremiumPlan = false // v1.0では非公開
+    }
 };
 ```
 
@@ -223,7 +208,7 @@ var appSettings = new AppSettings
 ### 7.1 データベースの確認
 
 1. Supabaseダッシュボードで「Table Editor」を開く
-2. `licenses`、`license_activations`、`subscriptions`テーブルが作成されていることを確認
+2. `licenses` と `license_activations` テーブルが作成されていることを確認（`subscriptions` テーブルは使用しません）
 
 ### 7.2 Edge Functionsの確認
 
@@ -263,5 +248,5 @@ var appSettings = new AppSettings
 
 1. テスト購入を実行して、ライセンスキーが正しく生成されることを確認
 2. ライセンス検証が正しく動作することを確認
-3. サブスクリプションの更新が正しく処理されることを確認
+3. Webhook のテストで `checkout.session.completed` が 200 になることを確認
 
