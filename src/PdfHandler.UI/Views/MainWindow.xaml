@@ -5,6 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
         Title="PDFハンドラ" Height="700" Width="1200"
+        Icon="/Assets/PdfHandler.ico"
         WindowStartupLocation="CenterScreen"
         Loaded="MainWindow_Loaded"
         Closing="MainWindow_Closing">

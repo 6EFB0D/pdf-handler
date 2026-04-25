@@ -14,6 +14,7 @@
     <Copyright>Copyright © 2024-2025 Goplan</Copyright>
     <PackageIcon>PdfHandler.ico</PackageIcon>
     <PackageReadmeFile>README.md</PackageReadmeFile>
+    <ApplicationIcon>Assets\PdfHandler.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
@@ -30,6 +31,11 @@
     <None Update="USER_MANUAL.md">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- アプリアイコン -->
+    <Resource Include="Assets\PdfHandler.ico" />
   </ItemGroup>
 
   <ItemGroup>

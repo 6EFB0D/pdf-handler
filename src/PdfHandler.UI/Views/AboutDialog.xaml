@@ -4,6 +4,7 @@
         Title="バージョン情報" 
         Height="650" 
         Width="550"
+        Icon="/Assets/PdfHandler.ico"
         WindowStartupLocation="CenterOwner"
         ResizeMode="NoResize"
         Background="#F5F5F5">
@@ -15,11 +16,16 @@
                 
                 <!-- ヘッダー -->
                 <StackPanel HorizontalAlignment="Center" Margin="0,10,0,20">
-                    <TextBlock Text="📄 PDFハンドラ" 
-                               FontSize="32" 
-                               FontWeight="Bold"
-                               HorizontalAlignment="Center"
-                               Foreground="#333333"/>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,4">
+                        <Image Source="/Assets/PdfHandler.ico" Width="48" Height="48"
+                               VerticalAlignment="Center" Margin="0,0,10,0"
+                               RenderOptions.BitmapScalingMode="HighQuality"/>
+                        <TextBlock Text="PDFハンドラ"
+                                   FontSize="32"
+                                   FontWeight="Bold"
+                                   VerticalAlignment="Center"
+                                   Foreground="#333333"/>
+                    </StackPanel>
                     
                     <!-- バージョン情報 -->
                     <TextBlock x:Name="VersionTextBlock"
