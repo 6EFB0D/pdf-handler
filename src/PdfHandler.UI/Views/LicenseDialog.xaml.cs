@@ -105,6 +105,16 @@ public partial class LicenseDialog : Window
                 NotPurchasedStatePanel.Visibility = Visibility.Collapsed;
                 if (AdditionalPurchaseCheckBox != null) AdditionalPurchaseCheckBox.IsChecked = false;
                 if (PurchaseStandardButton != null) PurchaseStandardButton.IsEnabled = false;
+
+                // 有効バージョン範囲を表示
+                if (ValidVersionRangeText != null)
+                {
+                    var licenseInfo = _licenseService.GetLicenseInfo();
+                    var purchasedMajor = string.IsNullOrEmpty(licenseInfo.PurchasedVersion)
+                        ? "1"
+                        : licenseInfo.PurchasedVersion.Trim().Split('.')[0];
+                    ValidVersionRangeText.Text = $"有効バージョン: v{purchasedMajor}.x.x まで（利用規約 第8条）";
+                }
             }
             else
             {

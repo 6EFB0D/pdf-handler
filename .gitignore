@@ -422,3 +422,5 @@ docs/internal/
 
 # Version backup artifacts (large binaries - use Git LFS or store externally)
 backups/
+
+build_out/

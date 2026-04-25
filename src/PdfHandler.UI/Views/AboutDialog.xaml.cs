@@ -95,10 +95,22 @@ namespace PdfHandler.UI.Views
             }
             else if (updateInfo.IsUpdateAvailable)
             {
-                // 更新あり
-                UpdateStatusTextBlock.Text = $"🆕 v{updateInfo.LatestVersion} が利用可能です";
-                UpdateStatusTextBlock.Foreground = new System.Windows.Media.SolidColorBrush(
-                    System.Windows.Media.Color.FromRgb(0x00, 0x7B, 0xFF));
+                var currentMajor = GetMajorVersion(updateInfo.CurrentVersion);
+                var latestMajor  = GetMajorVersion(updateInfo.LatestVersion);
+                if (latestMajor > currentMajor)
+                {
+                    // メジャーアップ → 有償案内（橙色）
+                    UpdateStatusTextBlock.Text = $"🆕 v{updateInfo.LatestVersion} 公開（新規ご購入が必要です）";
+                    UpdateStatusTextBlock.Foreground = new System.Windows.Media.SolidColorBrush(
+                        System.Windows.Media.Color.FromRgb(0xFF, 0x8C, 0x00));
+                }
+                else
+                {
+                    // 同一メジャー → 無償アップデート（青）
+                    UpdateStatusTextBlock.Text = $"🆕 v{updateInfo.LatestVersion} が利用可能です";
+                    UpdateStatusTextBlock.Foreground = new System.Windows.Media.SolidColorBrush(
+                        System.Windows.Media.Color.FromRgb(0x00, 0x7B, 0xFF));
+                }
                 UpdateButton.Visibility = Visibility.Visible;
             }
             else
@@ -183,25 +195,62 @@ namespace PdfHandler.UI.Views
         }
 
         /// <summary>
-        /// 更新ありダイアログ
+        /// 更新ありダイアログ（メジャーバージョンが異なる場合は有償案内を表示）
         /// </summary>
         private void ShowUpdateAvailableDialog(UpdateInfo updateInfo)
         {
-            var result = MessageBox.Show(
-                $"🆕 新しいバージョンが利用可能です\n\n" +
-                $"現在のバージョン: {updateInfo.CurrentVersion}\n" +
-                $"最新バージョン: {updateInfo.LatestVersion}\n\n" +
-                $"リリース日: {updateInfo.FormattedReleaseDate}\n" +
-                $"ファイルサイズ: {updateInfo.FormattedSize}\n\n" +
-                $"ダウンロードページを開きますか？",
-                "アップデート",
-                MessageBoxButton.YesNo,
-                MessageBoxImage.Information);
-            
+            var currentMajor = GetMajorVersion(updateInfo.CurrentVersion);
+            var latestMajor  = GetMajorVersion(updateInfo.LatestVersion);
+            var isMajorUpgrade = latestMajor > currentMajor;
+
+            string message;
+            string title;
+            MessageBoxImage icon;
+
+            if (isMajorUpgrade)
+            {
+                // メジャーバージョンアップ → 有償案内
+                message =
+                    $"🆕 新しいメジャーバージョン v{updateInfo.LatestVersion} が公開されています\n\n" +
+                    $"現在のバージョン: v{updateInfo.CurrentVersion}\n" +
+                    $"最新バージョン:   v{updateInfo.LatestVersion}\n\n" +
+                    $"⚠️ ご注意: v{latestMajor}.x.x は現在お持ちのライセンス（v{currentMajor}.x.x 対象）では\n" +
+                    $"ご利用いただけません。新しいライセンスのご購入が必要です。\n\n" +
+                    $"（利用規約 第8条 / 詳細はリリースページをご確認ください）\n\n" +
+                    $"リリースページを開きますか？";
+                title = "メジャーバージョンアップのお知らせ";
+                icon  = MessageBoxImage.Warning;
+            }
+            else
+            {
+                // 同一メジャー内の無償アップデート
+                message =
+                    $"🆕 新しいバージョンが利用可能です\n\n" +
+                    $"現在のバージョン: v{updateInfo.CurrentVersion}\n" +
+                    $"最新バージョン:   v{updateInfo.LatestVersion}\n\n" +
+                    $"✅ 現在のライセンス（v{currentMajor}.x.x 対象）でそのままご利用いただけます。\n\n" +
+                    $"リリース日: {updateInfo.FormattedReleaseDate}\n" +
+                    $"ファイルサイズ: {updateInfo.FormattedSize}\n\n" +
+                    $"ダウンロードページを開きますか？";
+                title = "アップデート";
+                icon  = MessageBoxImage.Information;
+            }
+
+            var result = MessageBox.Show(message, title, MessageBoxButton.YesNo, icon);
             if (result == MessageBoxResult.Yes)
             {
                 OpenUrl(updateInfo.DownloadUrl);
             }
+        }
+
+        /// <summary>
+        /// バージョン文字列からメジャーバージョン番号を取得
+        /// </summary>
+        private static int GetMajorVersion(string version)
+        {
+            if (string.IsNullOrEmpty(version)) return 0;
+            var part = version.TrimStart('v', 'V').Split('.')[0];
+            return int.TryParse(part, out var major) ? major : 0;
         }
 
         /// <summary>
