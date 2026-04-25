@@ -2,7 +2,7 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="ライセンス"
-        Height="700"
+        Height="550"
         Width="720"
         WindowStartupLocation="CenterOwner"
         ResizeMode="NoResize"
@@ -41,7 +41,7 @@
                         Background="White" Margin="0,0,0,12" Padding="15">
                     <StackPanel>
                         <TextBlock Text="Standard版（買い切り）" FontSize="16" FontWeight="Bold" Margin="0,0,0,8"/>
-                        <TextBlock Text="¥3,850（税込）" FontSize="28" Foreground="#0066CC" Margin="0,0,0,8"/>
+                        <TextBlock Text="¥5,000（消費税不課税）" FontSize="28" Foreground="#0066CC" Margin="0,0,0,8"/>
                         <TextBlock Text="• PDF結合・分割・専用ワークフォルダ・永続利用" FontSize="12" Foreground="#555555"/>
                         <StackPanel x:Name="PurchasedStatePanel" Margin="0,12,0,0" Visibility="Collapsed">
                             <Border Background="#E8F5E9" Padding="10" CornerRadius="5" Margin="0,0,0,8">
@@ -61,9 +61,9 @@
                     </StackPanel>
                 </Border>
 
-                <!-- まとめ買い・請求書払い -->
+                <!-- まとめ買い・請求書払い（法人直接営業中は非表示） -->
                 <Border x:Name="VolumeLicenseBorder" BorderBrush="#6C757D" BorderThickness="1"
-                        Background="White" Margin="0,0,0,12" Padding="15">
+                        Background="White" Margin="0,0,0,12" Padding="15" Visibility="Collapsed">
                     <StackPanel>
                         <TextBlock Text="まとめ買い・請求書払い" FontSize="16" FontWeight="Bold" Margin="0,0,0,8"/>
                         <TextBlock Text="複数台のライセンスや請求書払いをご希望の場合は、サポートまでお問い合わせください。" 

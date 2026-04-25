@@ -35,7 +35,7 @@
 - **Name**: `PDF Handler - 買い切り版`
 - **Description**: `PDF Handler Standard版（買い切り）`
 - **Pricing**: `One-time`
-- **Price**: `3,850 JPY`（税込。Stripe は税込の単一価格として設定）
+- **Price**: `5,000 JPY`（消費税不課税。Stripe は不課税の単一価格として設定）
 - 「Save product」をクリック
 - **Price ID**をコピー（例: `price_xxxxx`）
 
