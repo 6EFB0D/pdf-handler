@@ -8,7 +8,8 @@
         Icon="/Assets/PdfHandler.ico"
         WindowStartupLocation="CenterScreen"
         Loaded="MainWindow_Loaded"
-        Closing="MainWindow_Closing">
+        Closing="MainWindow_Closing"
+        PreviewKeyDown="MainWindow_PreviewKeyDown">
     <Window.InputBindings>
         <KeyBinding Key="Z" Modifiers="Ctrl" Command="{Binding UndoCommand}"/>
         <KeyBinding Key="Y" Modifiers="Ctrl" Command="{Binding RedoCommand}"/>
@@ -48,7 +49,7 @@
                 <Separator/>
                 <MenuItem Header="削除(_D)" Click="DeleteFiles_Click" InputGestureText="Delete"/>
                 <Separator/>
-                <MenuItem Header="すべて選択(_A)" InputGestureText="Ctrl+A"/>
+                <MenuItem Header="すべて選択(_A)" Click="SelectAllFiles_Click" InputGestureText="Ctrl+A"/>
             </MenuItem>
             <MenuItem Header="表示(_V)">
                 <MenuItem Header="サムネイルビュー(_T)" Command="{Binding ToggleViewCommand}" 
@@ -96,12 +97,7 @@
                 <MenuItem x:Name="LicenseMenuItem" Header="ライセンス(_L)..." Click="License_Click"/>
                 <MenuItem Header="バージョン情報(_A)" Click="About_Click"/>
                 <Separator/>
-                <MenuItem Header="サポート・お問い合わせ(_S)">
-                    <MenuItem Header="PDF Handlerのページ" Click="ProductPage_Click"/>
-                    <MenuItem Header="お問い合わせ" Click="Contact_Click"/>
-                    <Separator/>
-                    <MenuItem Header="アンケート・要望を送信" Click="SurveyForm_Click"/>
-                </MenuItem>
+                <MenuItem Header="お問い合わせフォーム" Click="SurveyForm_Click"/>
             </MenuItem>
         </Menu>
 
@@ -114,7 +110,7 @@
             <Button Content="📁 開く" Command="{Binding OpenFolderCommand}" Style="{StaticResource ToolbarButtonStyle}" ToolTip="フォルダを開く"/>
             <Button Content="🗑️ 削除" Click="DeleteFiles_Click" Style="{StaticResource ToolbarButtonStyle}" ToolTip="選択したファイルを削除（複数選択可）"/>
             <Separator/>
-            <Button Content="🔗 結合" Click="MergePdfs_Click" Style="{StaticResource ToolbarButtonStyle}" ToolTip="複数のPDFを結合（Ctrl+クリックで複数選択）"/>
+            <Button Content="🔗 結合" Click="MergePdfs_Click" Style="{StaticResource ToolbarButtonStyle}" ToolTip="複数のPDFを結合（Shift/Ctrl+クリック、Ctrl+Aで複数選択）"/>
             <Button Content="✂️ 分割" Command="{Binding SplitPdfCommand}" Style="{StaticResource ToolbarButtonStyle}" ToolTip="PDFを分割"/>
             <Button Content="📄 ページ編集" Command="{Binding PageOperationsCommand}" Style="{StaticResource ToolbarButtonStyle}" ToolTip="ページの削除・挿入"/>
             <Button Content="📋 ヘッダ・フッター" Click="HeaderFooter_Click" Style="{StaticResource ToolbarButtonStyle}" ToolTip="ヘッダ・フッターの挿入"/>
@@ -267,12 +263,12 @@
                                     <Border BorderBrush="#CCCCCC" BorderThickness="1" 
                                             Height="{Binding DataContext.ThumbnailHeight, RelativeSource={RelativeSource AncestorType=ListView}}" 
                                             Background="White"
-                                            MouseLeftButtonDown="ThumbnailItem_MouseLeftButtonDown"
+                                            PreviewMouseLeftButtonDown="ThumbnailItem_MouseLeftButtonDown"
                                             MouseLeftButtonUp="ThumbnailItem_MouseLeftButtonUp"
                                             MouseRightButtonDown="ThumbnailItem_MouseRightButtonDown"
                                             MouseRightButtonUp="ThumbnailItem_MouseRightButtonUp"
                                             MouseMove="ThumbnailItem_MouseMove"
-                                            ToolTip="左ドラッグ: プレビューに挿入／フォルダにコピー | 右ドラッグ: フォルダでコピー/移動を選択">
+                                            ToolTip="Ctrl+左ドラッグ: 表示中PDFに挿入 | 左ドラッグ: フォルダにコピー | 右ドラッグ: フォルダでコピー/移動を選択">
                                         <Grid>
                                             <Image Source="{Binding ThumbnailData, Converter={StaticResource ByteArrayToImageConverter}}" 
                                                    Stretch="Uniform"/>
@@ -454,13 +450,30 @@
                         </TextBlock>
                         <Button Content="▶️" Margin="5" Padding="5" Command="{Binding NextPageCommand}"/>
                         <Separator/>
-                        <Button Content="🗑️ このページを削除" Margin="5" Padding="5" Command="{Binding DeleteCurrentPageCommand}" ToolTip="表示中のページを削除"/>
-                        <TextBlock Text="💡 PDFをドロップで挿入" VerticalAlignment="Center" Margin="10,0,0,0" Foreground="Gray" FontSize="11"/>
+                        <Button Content="🗑️ このページを削除" Margin="5" Padding="5"
+                                Command="{Binding DeleteCurrentPageCommand}"
+                                ToolTip="{Binding PageEditFeatureTooltip}"
+                                ToolTipService.ShowOnDisabled="True"/>
+                        <TextBlock Text="{Binding PageEditDropHint}"
+                                   ToolTip="{Binding PageEditFeatureTooltip}"
+                                   VerticalAlignment="Center" Margin="10,0,0,0" FontSize="11">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Foreground" Value="Gray"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding CanUsePageEditFeature}" Value="False">
+                                            <Setter Property="Foreground" Value="#A0A0A0"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
                     </StackPanel>
 
                     <!-- プレビュー表示エリア（PDFをドロップで挿入） -->
                     <Border Grid.Row="1" Background="White" x:Name="PreviewDropTarget"
-                            AllowDrop="True" DragOver="Preview_DragOver" Drop="Preview_Drop">
+                            AllowDrop="True" DragOver="Preview_DragOver" Drop="Preview_Drop"
+                            ToolTip="{Binding PageEditFeatureTooltip}">
                         <ScrollViewer x:Name="PreviewScrollViewer" 
                                       HorizontalScrollBarVisibility="Auto" 
                                       VerticalScrollBarVisibility="Auto">

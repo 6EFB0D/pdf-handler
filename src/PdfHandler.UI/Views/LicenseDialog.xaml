@@ -41,7 +41,7 @@
                         Background="White" Margin="0,0,0,12" Padding="15">
                     <StackPanel>
                         <TextBlock Text="Standard版（買い切り）" FontSize="16" FontWeight="Bold" Margin="0,0,0,8"/>
-                        <TextBlock Text="¥5,000（消費税不課税）" FontSize="28" Foreground="#0066CC" Margin="0,0,0,8"/>
+                        <TextBlock Text="¥4,980（消費税不課税）" FontSize="28" Foreground="#0066CC" Margin="0,0,0,8"/>
                         <TextBlock Text="• PDF結合・分割・専用ワークフォルダ・永続利用" FontSize="12" Foreground="#555555"/>
                         <StackPanel x:Name="PurchasedStatePanel" Margin="0,12,0,0" Visibility="Collapsed">
                             <Border Background="#E8F5E9" Padding="10" CornerRadius="5" Margin="0,0,0,8">

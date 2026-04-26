@@ -35,7 +35,7 @@
                         Background="White" Margin="0,0,0,15" Padding="20">
                     <StackPanel>
                         <TextBlock Text="Standard版（買い切り）" FontSize="18" FontWeight="Bold" Margin="0,0,0,10"/>
-                        <TextBlock Text="¥5,000（消費税不課税）" FontSize="32" Foreground="#0066CC" Margin="0,0,0,10"/>
+                        <TextBlock Text="¥4,980（消費税不課税）" FontSize="32" Foreground="#0066CC" Margin="0,0,0,10"/>
                         <TextBlock Text="• PDF結合・分割（無制限）" FontSize="13" Margin="0,3"/>
                         <TextBlock Text="• ページ回転・ファイル名変更" FontSize="13" Margin="0,3"/>
                         <TextBlock Text="• 専用ワークフォルダ" FontSize="13" Margin="0,3"/>

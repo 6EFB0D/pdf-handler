@@ -9,9 +9,9 @@
     <Version>1.1.0</Version>
     <FileVersion>1.1.0.0</FileVersion>
     <AssemblyVersion>1.1.0.0</AssemblyVersion>
-    <Company>Goplan</Company>
+    <Company>Office Go Plan</Company>
     <Product>PDFハンドラ</Product>
-    <Copyright>Copyright © 2024-2025 Goplan</Copyright>
+    <Copyright>Copyright © 2024-2026 Office Go Plan</Copyright>
     <PackageIcon>PdfHandler.ico</PackageIcon>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <ApplicationIcon>Assets\PdfHandler.ico</ApplicationIcon>

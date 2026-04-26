@@ -4,6 +4,7 @@
 
 using PdfHandler.UI.ViewModels;
 using PdfHandler.Infrastructure.Configuration;
+using PdfHandler.Infrastructure.Helpers;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -512,10 +513,17 @@ public partial class MainWindow : Window
 
     private void Preview_DragOver(object sender, DragEventArgs e)
     {
-        var hasTarget = _viewModel?.SelectedPdfFile != null || e.Data.GetDataPresent("PdfInsertTarget");
-        if (!hasTarget) return;
+        if (_viewModel?.CanUsePageEditFeature != true)
+        {
+            e.Effects = DragDropEffects.None;
+            e.Handled = true;
+            return;
+        }
+
         if (e.Data.GetDataPresent(DataFormats.FileDrop))
         {
+            if (_viewModel?.SelectedPdfFile == null) return;
+
             var files = (string[]?)e.Data.GetData(DataFormats.FileDrop);
             if (files != null && files.Any(f => f.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase)))
             {
@@ -524,7 +532,7 @@ public partial class MainWindow : Window
                 return;
             }
         }
-        if (e.Data.GetDataPresent("PdfFile"))
+        if (e.Data.GetDataPresent("PdfFile") && e.Data.GetDataPresent("PdfInsertTarget"))
         {
             e.Effects = DragDropEffects.Copy;
             e.Handled = true;
@@ -554,8 +562,15 @@ public partial class MainWindow : Window
     {
         if (sender is FrameworkElement fe && fe.DataContext is PdfFileInfo fileInfo)
         {
-            // ドラッグ開始前に挿入先を記録（クリックでフォーカスが移る前に取得）
-            _insertTargetPathForDrag = _viewModel?.SelectedPdfFile?.FilePath;
+            _insertTargetPathForDrag = null;
+            if ((Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control &&
+                _viewModel?.SelectedPdfFile != null &&
+                !string.Equals(_viewModel.SelectedPdfFile.FilePath, fileInfo.FilePath, StringComparison.OrdinalIgnoreCase))
+            {
+                // Ctrl+ドラッグ時は、クリックで選択が移る前の表示中PDFを挿入先として固定する。
+                _insertTargetPathForDrag = _viewModel.SelectedPdfFile.FilePath;
+            }
+
             _thumbnailDragStart = e.GetPosition(null);
             _thumbnailDragStarted = true;
         }
@@ -582,6 +597,7 @@ public partial class MainWindow : Window
                 data.SetData("PdfFiles", paths);
             }
             DragDrop.DoDragDrop(fe, data, DragDropEffects.Copy | DragDropEffects.Move);
+            _insertTargetPathForDrag = null;
             return;
         }
 
@@ -603,10 +619,10 @@ public partial class MainWindow : Window
     private async void Preview_Drop(object sender, DragEventArgs e)
     {
         string? targetPath = null; // 挿入先PDF（サムネイルドラッグ時はドラッグデータから取得）
-        if (e.Data.GetDataPresent("PdfInsertTarget"))
-            targetPath = e.Data.GetData("PdfInsertTarget") as string;
-        if (string.IsNullOrEmpty(targetPath) && _viewModel?.SelectedPdfFile != null)
+        if (e.Data.GetDataPresent(DataFormats.FileDrop) && _viewModel?.SelectedPdfFile != null)
             targetPath = _viewModel.SelectedPdfFile.FilePath;
+        else if (e.Data.GetDataPresent("PdfInsertTarget"))
+            targetPath = e.Data.GetData("PdfInsertTarget") as string;
 
         if (string.IsNullOrEmpty(targetPath)) return;
 
@@ -679,13 +695,20 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"URLを開けませんでした。\n\n{ex.Message}", "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
+            DebugLogger.LogError(ErrorCodes.UrlOpenFailed, $"URLオープン失敗: {url}", ex);
+            MessageBox.Show(ErrorCodes.UserMessage(ErrorCodes.UrlOpenFailed, "URLを開けませんでした。"), "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
     // インライン編集機能・ショートカット
     private void FileListView_KeyDown(object sender, KeyEventArgs e)
     {
+        if (e.Key == Key.A && (Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control)
+        {
+            SelectAllVisiblePdfFiles();
+            e.Handled = true;
+            return;
+        }
         if (e.Key == Key.C && (Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control)
         {
             CopyFiles_Click(sender, e);
@@ -726,6 +749,36 @@ public partial class MainWindow : Window
             DeleteFiles_Click(sender, e);
             e.Handled = true;
         }
+    }
+
+    private void MainWindow_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.OriginalSource is TextBox)
+            return;
+
+        if (e.Key == Key.A && (Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control)
+        {
+            SelectAllVisiblePdfFiles();
+            e.Handled = true;
+        }
+    }
+
+    private void SelectAllFiles_Click(object sender, RoutedEventArgs e)
+    {
+        SelectAllVisiblePdfFiles();
+    }
+
+    private void SelectAllVisiblePdfFiles()
+    {
+        if (_viewModel == null || _viewModel.PdfFiles.Count == 0)
+            return;
+
+        var listView = _viewModel.IsThumbnailView ? ThumbnailListView : FileListView;
+        listView.SelectAll();
+        listView.Focus();
+
+        if (listView.SelectedItem is PdfFileInfo selectedFile)
+            _viewModel.SelectedPdfFile = selectedFile;
     }
 
     private void FileName_DoubleClick(object sender, MouseButtonEventArgs e)
@@ -892,7 +945,8 @@ public partial class MainWindow : Window
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"ファイルを開けませんでした: {ex.Message}", "エラー",
+                DebugLogger.LogError(ErrorCodes.FileOpenFailed, "外部アプリでのファイルオープン失敗", ex);
+                MessageBox.Show(ErrorCodes.UserMessage(ErrorCodes.FileOpenFailed, "ファイルを開けませんでした。"), "エラー",
                     MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
@@ -927,7 +981,7 @@ public partial class MainWindow : Window
             else
             {
                 MessageBox.Show(
-                    "取扱説明書が見つかりません。\n\nGitHubリポジトリのUSER_MANUAL.mdを参照してください。",
+                    "取扱説明書が見つかりません。\n\nアプリを再インストールするか、サポートにお問い合わせください。",
                     "情報",
                     MessageBoxButton.OK,
                     MessageBoxImage.Information);
@@ -935,7 +989,8 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"取扱説明書を開けませんでした: {ex.Message}", "エラー",
+            DebugLogger.LogError(ErrorCodes.DocumentOpenFailed, "取扱説明書オープン失敗", ex);
+            MessageBox.Show(ErrorCodes.UserMessage(ErrorCodes.DocumentOpenFailed, "取扱説明書を開けませんでした。"), "エラー",
                 MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
@@ -999,7 +1054,7 @@ public partial class MainWindow : Window
         }
         else
         {
-            MessageBox.Show("結合するPDFファイルを選択してください。\n\n複数選択: Ctrlキーを押しながらクリック", "情報",
+            MessageBox.Show("結合するPDFファイルを選択してください。\n\n複数選択: Shift/Ctrl+クリック、または Ctrl+A", "情報",
                 MessageBoxButton.OK, MessageBoxImage.Information);
         }
     }

@@ -75,8 +75,9 @@ public partial class LicenseDialog : Window
         }
         catch (Exception ex)
         {
+            DebugLogger.LogError(ErrorCodes.LicenseLoadFailed, "ライセンス情報読み込み失敗", ex);
             LicensePlanText.Text = "エラー";
-            LicenseStatusText.Text = $"読み込みに失敗しました: {ex.Message}";
+            LicenseStatusText.Text = $"読み込みに失敗しました（{ErrorCodes.LicenseLoadFailed}）";
             LicenseStatusText.Foreground = System.Windows.Media.Brushes.Red;
         }
     }
@@ -141,7 +142,7 @@ public partial class LicenseDialog : Window
     {
         try
         {
-            DebugLogger.WriteLine("=== 買い切り版購入開始 ===");
+            DebugLogger.LogInfo("=== 買い切り版購入開始 ===");
             var emailDlg = new PurchaseEmailDialog { Owner = this };
             if (emailDlg.ShowDialog() != true) return;
 
@@ -155,7 +156,7 @@ public partial class LicenseDialog : Window
                     : result.Message);
             }
 
-            DebugLogger.WriteLine($"購入手続きメール送信成功: {result.EmailMasked}");
+            DebugLogger.LogInfo($"購入手続きメール送信成功: {result.EmailMasked}");
 
             MessageBox.Show(
                 $"{result.EmailMasked} 宛にお支払い手続きのメールをお送りしました。\n\n" +
@@ -175,12 +176,9 @@ public partial class LicenseDialog : Window
         }
         catch (Exception ex)
         {
-            DebugLogger.WriteLine($"買い切り版購入エラー: {ex.GetType().Name} - {ex.Message}");
-            if (ex.InnerException != null) DebugLogger.WriteLine($"内部例外: {ex.InnerException.Message}");
-
+            DebugLogger.LogError(ErrorCodes.PurchaseStartFailed, "買い切り版購入エラー", ex);
             MessageBox.Show(
-                $"{ex.Message}\n\n" +
-                "問題が解消しない場合は support@office-goplan.com までお問い合わせください。\n" +
+                ErrorCodes.UserMessage(ErrorCodes.PurchaseStartFailed) + "\n\n" +
                 "既にお持ちのライセンスキーは「ライセンスキーを入力」からご登録いただけます。",
                 "エラー",
                 MessageBoxButton.OK,
@@ -193,7 +191,11 @@ public partial class LicenseDialog : Window
         var url = _appSettings.ContactUrl?.Trim();
         if (string.IsNullOrEmpty(url)) return;
         try { Process.Start(new ProcessStartInfo { FileName = url, UseShellExecute = true }); }
-        catch (Exception ex) { MessageBox.Show($"URLを開けませんでした。\n\n{ex.Message}", "エラー", MessageBoxButton.OK, MessageBoxImage.Error); }
+        catch (Exception ex)
+        {
+            DebugLogger.LogError(ErrorCodes.UrlOpenFailed, $"URLオープン失敗: {url}", ex);
+            MessageBox.Show(ErrorCodes.UserMessage(ErrorCodes.UrlOpenFailed, "URLを開けませんでした。"), "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
     }
 
     private void EnterLicenseKey_Click(object sender, RoutedEventArgs e)

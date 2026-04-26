@@ -98,6 +98,17 @@ public partial class MainWindowViewModel : ObservableObject
     [ObservableProperty]
     private bool _isTrialExpiringSoon = false;
 
+    [ObservableProperty]
+    private bool _canUsePageEditFeature = false;
+
+    public string PageEditDropHint => CanUsePageEditFeature
+        ? "💡 Ctrl+ドラッグ / PDFドロップで挿入"
+        : "🔒 PDF挿入（有償版）";
+
+    public string PageEditFeatureTooltip => CanUsePageEditFeature
+        ? "表示中のページの前にPDFを挿入できます。"
+        : "ページの削除・挿入は有償版の機能です。試用期間が終了している場合はライセンスの購入が必要です。";
+
     /// <summary>試用期間終了時に購入ダイアログを1回だけ表示するためのフラグ</summary>
     private bool _hasShownExpiredTrialDialogThisSession = false;
 
@@ -594,6 +605,21 @@ public partial class MainWindowViewModel : ObservableObject
             };
             IsTrialExpiringSoon = false;
         }
+
+        CanUsePageEditFeature = _licenseService.CanUseSplit();
+        NotifyPageEditFeatureStateChanged();
+    }
+
+    private void NotifyPageEditFeatureStateChanged()
+    {
+        OnPropertyChanged(nameof(PageEditDropHint));
+        OnPropertyChanged(nameof(PageEditFeatureTooltip));
+        DeleteCurrentPageCommand.NotifyCanExecuteChanged();
+    }
+
+    partial void OnCanUsePageEditFeatureChanged(bool value)
+    {
+        NotifyPageEditFeatureStateChanged();
     }
 
     private void ShowPurchaseDialog()
@@ -634,6 +660,8 @@ public partial class MainWindowViewModel : ObservableObject
 
     partial void OnSelectedPdfFileChanged(PdfFileInfo? value)
     {
+        DeleteCurrentPageCommand.NotifyCanExecuteChanged();
+
         if (value != null)
         {
             _ = LoadPreviewAsync(value.FilePath);
@@ -644,6 +672,11 @@ public partial class MainWindowViewModel : ObservableObject
             CurrentPageNumber = 1;
             TotalPages = 1;
         }
+    }
+
+    partial void OnTotalPagesChanged(int value)
+    {
+        DeleteCurrentPageCommand.NotifyCanExecuteChanged();
     }
 
     // お気に入り管理
@@ -1529,7 +1562,7 @@ public partial class MainWindowViewModel : ObservableObject
     /// <summary>
     /// 表示中のページを削除（紙を捨てる感覚）
     /// </summary>
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanExecuteDeleteCurrentPage))]
     private async Task DeleteCurrentPageAsync()
     {
         if (!_licenseService.CanUseSplit()) { ShowLicenseMessage(); return; }
@@ -1564,6 +1597,8 @@ public partial class MainWindowViewModel : ObservableObject
             StatusText = "削除失敗";
         }
     }
+
+    private bool CanExecuteDeleteCurrentPage() => CanUsePageEditFeature && SelectedPdfFile != null && TotalPages > 1;
 
     /// <summary>
     /// 表示中のページの前にPDFを挿入（ドロップ時に呼ばれる）

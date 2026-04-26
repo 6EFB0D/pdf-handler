@@ -94,6 +94,8 @@ public partial class App : Application
         var appSettings = new AppSettings();
         
         // Supabase設定（環境変数から読み込む、なければ開発用のデフォルト値を使用）
+        appSettings.Supabase.Url = Environment.GetEnvironmentVariable("SUPABASE_URL")
+            ?? appSettings.Supabase.Url;
         appSettings.Supabase.AnonKey = Environment.GetEnvironmentVariable("SUPABASE_ANON_KEY") 
             ?? "sb_publishable_ELiCbHZwAR-ekkwEvhzCcQ_mWWYB_-2"; // 開発用フォールバック値
         appSettings.Supabase.ServiceRoleKey = Environment.GetEnvironmentVariable("SUPABASE_SERVICE_ROLE_KEY") 

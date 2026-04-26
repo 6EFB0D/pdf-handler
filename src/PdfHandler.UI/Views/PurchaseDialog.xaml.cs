@@ -90,7 +90,7 @@ public partial class PurchaseDialog : Window
     {
         try
         {
-            DebugLogger.WriteLine("=== 買い切り版購入開始 ===");
+            DebugLogger.LogInfo("=== 買い切り版購入開始 ===");
             var emailDlg = new PurchaseEmailDialog { Owner = this };
             if (emailDlg.ShowDialog() != true) return;
 
@@ -104,7 +104,7 @@ public partial class PurchaseDialog : Window
                     : result.Message);
             }
 
-            DebugLogger.WriteLine($"購入手続きメール送信成功: {result.EmailMasked}");
+            DebugLogger.LogInfo($"購入手続きメール送信成功: {result.EmailMasked}");
 
             MessageBox.Show(
                 $"{result.EmailMasked} 宛にお支払い手続きのメールをお送りしました。\n\n" +
@@ -133,16 +133,9 @@ public partial class PurchaseDialog : Window
         }
         catch (Exception ex)
         {
-            DebugLogger.WriteLine($"買い切り版購入エラー: {ex.GetType().Name} - {ex.Message}");
-            DebugLogger.WriteLine($"スタックトレース: {ex.StackTrace}");
-            if (ex.InnerException != null)
-            {
-                DebugLogger.WriteLine($"内部例外: {ex.InnerException.Message}");
-            }
-
+            DebugLogger.LogError(ErrorCodes.PurchaseStartFailed, "買い切り版購入エラー", ex);
             MessageBox.Show(
-                $"{ex.Message}\n\n" +
-                "問題が解消しない場合は support@office-goplan.com までお問い合わせください。\n" +
+                ErrorCodes.UserMessage(ErrorCodes.PurchaseStartFailed) + "\n\n" +
                 "既にお持ちのライセンスキーは「ライセンスキーを入力」からご登録いただけます。",
                 "エラー",
                 MessageBoxButton.OK,

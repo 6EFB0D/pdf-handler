@@ -9,6 +9,7 @@ using System.Windows;
 using System.Diagnostics;
 using PdfHandler.UI.Services;
 using PdfHandler.UI.Models;
+using PdfHandler.Infrastructure.Helpers;
 
 namespace PdfHandler.UI.Views
 {
@@ -47,11 +48,11 @@ namespace PdfHandler.UI.Views
                 VersionTextBlock.Text = $"バージョン {displayVersion}";
                 
                 // 著作権
-                CopyrightTextBlock.Text = "© 2025-2026 Goplan. All rights reserved.";
+                CopyrightTextBlock.Text = "© 2025-2026 Office Go Plan. All rights reserved.";
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"バージョン情報の取得に失敗: {ex.Message}");
+                DebugLogger.LogError(ErrorCodes.UiInitFailed, "バージョン情報の取得に失敗", ex);
             }
         }
 
@@ -76,7 +77,7 @@ namespace PdfHandler.UI.Views
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"更新確認エラー: {ex.Message}");
+                DebugLogger.LogError(ErrorCodes.UpdateCheckFailed, "バックグラウンド更新確認エラー", ex);
                 UpdateStatusTextBlock.Text = "";
             }
         }
@@ -160,8 +161,9 @@ namespace PdfHandler.UI.Views
             }
             catch (Exception ex)
             {
+                DebugLogger.LogError(ErrorCodes.UpdateCheckFailed, "更新確認エラー", ex);
                 MessageBox.Show(
-                    $"更新確認中にエラーが発生しました。\n\n{ex.Message}",
+                    ErrorCodes.UserMessage(ErrorCodes.UpdateCheckFailed, "更新確認中にエラーが発生しました。"),
                     "エラー",
                     MessageBoxButton.OK,
                     MessageBoxImage.Error);
@@ -282,27 +284,31 @@ namespace PdfHandler.UI.Views
         }
 
         /// <summary>
-        /// よくある質問
+        /// メールでお問い合わせ
         /// </summary>
-        private void FAQ_Click(object sender, RoutedEventArgs e)
+        private void Contact_Click(object sender, RoutedEventArgs e)
         {
-            OpenUrl("https://github.com/6EFB0D/pdf-handler/discussions/categories/q-a");
+            var app = (App)Application.Current;
+            var settings = app.GetService<PdfHandler.Infrastructure.Configuration.AppSettings>();
+            var url = settings.ContactUrl?.Trim();
+            if (!string.IsNullOrEmpty(url))
+                OpenUrl(url);
+            else
+                OpenUrl("mailto:support@office-goplan.com");
         }
 
         /// <summary>
-        /// 問題を報告
+        /// アンケート・ご要望フォーム
         /// </summary>
-        private void ReportIssue_Click(object sender, RoutedEventArgs e)
+        private void SurveyForm_Click(object sender, RoutedEventArgs e)
         {
-            OpenUrl("https://github.com/6EFB0D/pdf-handler/issues/new/choose");
-        }
-
-        /// <summary>
-        /// ご意見・ご要望
-        /// </summary>
-        private void Discussions_Click(object sender, RoutedEventArgs e)
-        {
-            OpenUrl("https://github.com/6EFB0D/pdf-handler/discussions");
+            var app = (App)Application.Current;
+            var settings = app.GetService<PdfHandler.Infrastructure.Configuration.AppSettings>();
+            var url = settings.SurveyFormUrl?.Trim();
+            if (!string.IsNullOrEmpty(url))
+                OpenUrl(url);
+            else
+                OpenUrl("https://forms.gle/placeholder");
         }
 
         /// <summary>
@@ -373,8 +379,9 @@ namespace PdfHandler.UI.Views
             }
             catch (Exception ex)
             {
+                DebugLogger.LogError(ErrorCodes.DocumentOpenFailed, $"{title}の表示中にエラー発生", ex);
                 MessageBox.Show(
-                    $"{title}の表示中にエラーが発生しました。\n\n{ex.Message}",
+                    ErrorCodes.UserMessage(ErrorCodes.DocumentOpenFailed, $"{title}を表示できませんでした。"),
                     "エラー",
                     MessageBoxButton.OK,
                     MessageBoxImage.Error);
@@ -396,8 +403,9 @@ namespace PdfHandler.UI.Views
             }
             catch (Exception ex)
             {
+                DebugLogger.LogError(ErrorCodes.UrlOpenFailed, $"URLオープン失敗: {url}", ex);
                 MessageBox.Show(
-                    $"URLを開けませんでした。\n\n{url}\n\n{ex.Message}",
+                    ErrorCodes.UserMessage(ErrorCodes.UrlOpenFailed, "URLを開けませんでした。"),
                     "エラー",
                     MessageBoxButton.OK,
                     MessageBoxImage.Error);
