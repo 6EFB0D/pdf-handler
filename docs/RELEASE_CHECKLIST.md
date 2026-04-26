@@ -58,10 +58,10 @@ appSettings.ContactUrl = Environment.GetEnvironmentVariable("CONTACT_URL")
 
 | 項目 | 設定場所 |
 |------|----------|
-| Supabase URL | `AppSettings.cs` の `Supabase.Url` デフォルト |
-| Supabase Anon Key | `App.xaml.cs` の `SUPABASE_ANON_KEY` フォールバック |
+| Supabase URL | 環境変数 `SUPABASE_URL`（未設定時は `AppSettings.cs` のデフォルト） |
+| Supabase Anon Key | 環境変数 `SUPABASE_ANON_KEY`（未設定時は `App.xaml.cs` の開発用フォールバック） |
 
-※ 通常は環境変数で設定するため、ビルド時の差し替えは不要の場合あり
+※ 本番配布では `SUPABASE_URL` と `SUPABASE_ANON_KEY` を必ず設定すること（フォールバックは開発用のみ）
 
 ---
 
