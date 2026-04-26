@@ -97,6 +97,19 @@ function buildCustomerEmail(
 
   ${keyBlocks}
 
+  <div style="margin:20px 0;padding:14px 16px;
+              background:#fff8e1;border-left:4px solid #f59e0b;
+              border-radius:6px;font-size:13px;line-height:1.7">
+    <p style="margin:0 0 8px;font-weight:bold;color:#b45309">
+      ⚠ ライセンスキーの保管についてのお願い
+    </p>
+    <ul style="margin:0;padding-left:18px;color:#444">
+      <li>ライセンスキーは大切に保管してください（端末移行・再認証時に必要になります）</li>
+      <li>紛失時の再発行・再通知は原則として対応いたしかねます</li>
+      <li>本メールはご購入時のメールアドレス宛にお送りしています。そのまま保存しておくことを強くおすすめします</li>
+    </ul>
+  </div>
+
   ${invoiceLine}
 
   <h3 style="font-size:15px">アクティベーション手順</h3>
