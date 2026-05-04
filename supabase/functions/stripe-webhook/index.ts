@@ -3,6 +3,7 @@
 
 import Stripe from "stripe";
 import { createClient } from "@supabase/supabase-js";
+import { generateCompactLicenseKey } from "../_shared/compact-license-key.ts";
 
 const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
   apiVersion: "2023-10-16",
@@ -276,37 +277,15 @@ function getAppMailConfig(appId: string): AppMailConfig {
 
 // ---------------------------------------------------------------------------
 
-/** 買い切り Standard のみ（形式: {app_id}-P10x-{28hex}-{HMAC8}） */
+/** 買い切り Standard：コンパクトキー（記号32・Supabase は4桁区切りで保存） */
 async function generateLicenseKey(appId: string): Promise<string> {
-  const prefix = (appId || "PDFH").toUpperCase();
-  const typeCode = "P1";
+  const raw = (appId || "PDFH").toUpperCase().replace(/[^A-Z0-9]/g, "");
+  const prefix = raw.length >= 4 ? raw.slice(0, 4) : "PDFH";
   const majorVer = Deno.env.get("LICENSE_PURCHASED_MAJOR_VERSION") || "1";
-  const verCode = majorVer.padStart(2, "0");
-  const formCode = `${typeCode}${verCode}`;
-
-  const uuidHex = crypto.randomUUID().replace(/-/g, "").toUpperCase();
-  const serial = uuidHex.substring(0, 28);
-
-  const secretKey = Deno.env.get("LICENSE_SECRET_KEY") || "";
-  let hmacSuffix = "";
-  if (secretKey) {
-    const message = `${prefix}:${formCode}:${serial}`;
-    const key = await crypto.subtle.importKey(
-      "raw",
-      new TextEncoder().encode(secretKey),
-      { name: "HMAC", hash: "SHA-256" },
-      false,
-      ["sign"],
-    );
-    const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(message));
-    const sigHex = Array.from(new Uint8Array(sig))
-      .map((b) => b.toString(16).padStart(2, "0"))
-      .join("")
-      .toUpperCase();
-    hmacSuffix = `-${sigHex.substring(0, 8)}`;
-  }
-
-  return `${prefix}-${formCode}-${serial}${hmacSuffix}`;
+  const formCode = `P1${majorVer.padStart(2, "0")}`;
+  const secretKey = Deno.env.get("LICENSE_SECRET_KEY") || undefined;
+  const { storageKey } = await generateCompactLicenseKey(secretKey, prefix, formCode);
+  return storageKey;
 }
 
 async function handleCheckoutCompleted(supabase: any, session: Stripe.Checkout.Session) {

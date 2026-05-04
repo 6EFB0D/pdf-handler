@@ -3,11 +3,8 @@
 // Licensed under the MIT License. See LICENSE file in the project root for full license information.
 
 using System;
-using System.Diagnostics;
 using System.Windows;
-using System.Windows.Navigation;
 using PdfHandler.Core.Interfaces;
-using PdfHandler.Infrastructure.Configuration;
 
 namespace PdfHandler.UI.Views;
 
@@ -17,7 +14,6 @@ namespace PdfHandler.UI.Views;
 public partial class LicenseKeyDialog : Window
 {
     private readonly ILicenseService _licenseService;
-    private readonly AppSettings _appSettings;
 
     public LicenseKeyDialog()
     {
@@ -25,7 +21,6 @@ public partial class LicenseKeyDialog : Window
         
         var app = (App)Application.Current;
         _licenseService = app.GetService<ILicenseService>();
-        _appSettings = app.GetService<AppSettings>();
     }
 
     private async void Activate_Click(object sender, RoutedEventArgs e)
@@ -48,7 +43,11 @@ public partial class LicenseKeyDialog : Window
         }
         else
         {
-            MessageBox.Show("ライセンスキーが無効です。正しいキーを入力してください。", "エラー",
+            var detail = _licenseService.LastLicenseErrorMessage;
+            var message = string.IsNullOrWhiteSpace(detail)
+                ? "ライセンスキーが無効です。正しいキーを入力してください。"
+                : $"ライセンスキーが無効です。\n\n理由: {detail}";
+            MessageBox.Show(message, "エラー",
                 MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
@@ -59,22 +58,6 @@ public partial class LicenseKeyDialog : Window
         Close();
     }
 
-    private void ForgotLicenseKey_RequestNavigate(object sender, RequestNavigateEventArgs e)
-    {
-        e.Handled = true;
-        var url = _appSettings.ContactUrl?.Trim();
-        if (string.IsNullOrEmpty(url)) return;
-
-        try
-        {
-            Process.Start(new ProcessStartInfo { FileName = url, UseShellExecute = true });
-        }
-        catch (Exception ex)
-        {
-            MessageBox.Show($"URLを開けませんでした。\n\n{ex.Message}", "エラー",
-                MessageBoxButton.OK, MessageBoxImage.Error);
-        }
-    }
 }
 
 

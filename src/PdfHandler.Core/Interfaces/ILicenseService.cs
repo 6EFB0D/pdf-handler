@@ -37,6 +37,11 @@ public interface ILicenseService
     string? GetLicenseKey();
 
     /// <summary>
+    /// 直近のライセンス操作エラー（画面表示用）
+    /// </summary>
+    string? LastLicenseErrorMessage { get; }
+
+    /// <summary>
     /// ライセンス情報を読み込み
     /// </summary>
     Task LoadLicenseAsync();

@@ -23,6 +23,7 @@ public class LicenseService : ILicenseService, IDisposable
     private readonly string _hardwareId;
     private readonly AppSettings _settings;
     private readonly HttpClient _httpClient;
+    public string? LastLicenseErrorMessage { get; private set; }
 
     public LicenseService(AppSettings settings)
     {
@@ -39,7 +40,7 @@ public class LicenseService : ILicenseService, IDisposable
         _licenseFilePath = Path.Combine(pdfHandlerPath, "license.json");
         _hardwareId = GenerateHardwareId();
 
-        _httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
+        _httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
         _httpClient.DefaultRequestHeaders.Add("apikey", _settings.Supabase.AnonKey);
         _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {_settings.Supabase.AnonKey}");
     }
@@ -194,9 +195,11 @@ public class LicenseService : ILicenseService, IDisposable
     /// </summary>
     public async Task<bool> ActivateLicenseAsync(string licenseKey)
     {
+        LastLicenseErrorMessage = null;
         var trimmedKey = licenseKey?.Trim() ?? "";
         if (string.IsNullOrWhiteSpace(trimmedKey))
         {
+            LastLicenseErrorMessage = "ライセンスキーが入力されていません。";
             return false;
         }
 
@@ -217,7 +220,9 @@ public class LicenseService : ILicenseService, IDisposable
 
             if (!response.IsSuccessStatusCode)
             {
-                System.Diagnostics.Debug.WriteLine($"verify-license HTTPエラー: {response.StatusCode}");
+                var errorBody = await response.Content.ReadAsStringAsync();
+                LastLicenseErrorMessage = $"verify-license HTTPエラー: {(int)response.StatusCode} {response.StatusCode}";
+                System.Diagnostics.Debug.WriteLine($"{LastLicenseErrorMessage}: {errorBody}");
                 return false;
             }
 
@@ -228,7 +233,8 @@ public class LicenseService : ILicenseService, IDisposable
 
             if (result == null || !result.IsValid)
             {
-                System.Diagnostics.Debug.WriteLine($"verify-license 検証失敗: {result?.ErrorMessage}");
+                LastLicenseErrorMessage = result?.ErrorMessage ?? "ライセンス検証に失敗しました。";
+                System.Diagnostics.Debug.WriteLine($"verify-license 検証失敗: {LastLicenseErrorMessage}");
                 return false;
             }
 
@@ -250,7 +256,8 @@ public class LicenseService : ILicenseService, IDisposable
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"アクティベーションエラー: {ex.Message}");
+            LastLicenseErrorMessage = $"アクティベーションエラー: {ex.Message}";
+            System.Diagnostics.Debug.WriteLine(LastLicenseErrorMessage);
             return false;
         }
     }

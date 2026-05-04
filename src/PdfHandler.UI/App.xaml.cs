@@ -9,6 +9,8 @@ using PdfHandler.Infrastructure.Services;
 using PdfHandler.UI.ViewModels;
 using PdfHandler.UI.Views;
 using System;
+using System.IO;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
@@ -92,19 +94,23 @@ public partial class App : Application
     {
         // Configuration
         var appSettings = new AppSettings();
+
+        ApplyRuntimeSettings(appSettings);
         
         // Supabase設定（環境変数から読み込む、なければ開発用のデフォルト値を使用）
         appSettings.Supabase.Url = Environment.GetEnvironmentVariable("SUPABASE_URL")
             ?? appSettings.Supabase.Url;
         appSettings.Supabase.AnonKey = Environment.GetEnvironmentVariable("SUPABASE_ANON_KEY") 
-            ?? "sb_publishable_ELiCbHZwAR-ekkwEvhzCcQ_mWWYB_-2"; // 開発用フォールバック値
+            ?? (string.IsNullOrWhiteSpace(appSettings.Supabase.AnonKey)
+                ? "sb_publishable_ELiCbHZwAR-ekkwEvhzCcQ_mWWYB_-2"
+                : appSettings.Supabase.AnonKey); // 開発用フォールバック値
         appSettings.Supabase.ServiceRoleKey = Environment.GetEnvironmentVariable("SUPABASE_SERVICE_ROLE_KEY") 
             ?? ""; // Service Role Keyは機密情報のため、環境変数から読み込む必要がある
         
         // お問い合わせ先URL（サポート・ボリュームライセンス共通。環境変数で上書き可能）
         // ※ リリース前: 下記のプレースホルダーを実際のURLに差し替えること。docs/RELEASE_CHECKLIST.md 参照
         appSettings.ContactUrl = Environment.GetEnvironmentVariable("CONTACT_URL")
-            ?? "https://example.com/contact";
+            ?? appSettings.ContactUrl;
 
         // 商品紹介ページ・アンケートフォーム（環境変数で上書き可能）
         appSettings.ProductPageUrl = Environment.GetEnvironmentVariable("PRODUCT_PAGE_URL")
@@ -138,6 +144,49 @@ public partial class App : Application
 
         // Views
         services.AddSingleton<MainWindow>();
+    }
+
+    private static void ApplyRuntimeSettings(AppSettings appSettings)
+    {
+        var configPath = Path.Combine(AppContext.BaseDirectory, "PdfHandler.runtime.json");
+        if (!File.Exists(configPath))
+            return;
+
+        try
+        {
+            var json = File.ReadAllText(configPath);
+            var settings = JsonSerializer.Deserialize<RuntimeSettings>(json, new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            });
+
+            if (settings == null)
+                return;
+
+            if (!string.IsNullOrWhiteSpace(settings.SupabaseUrl))
+                appSettings.Supabase.Url = settings.SupabaseUrl.Trim();
+            if (!string.IsNullOrWhiteSpace(settings.SupabaseAnonKey))
+                appSettings.Supabase.AnonKey = settings.SupabaseAnonKey.Trim();
+            if (!string.IsNullOrWhiteSpace(settings.ContactUrl))
+                appSettings.ContactUrl = settings.ContactUrl.Trim();
+            if (!string.IsNullOrWhiteSpace(settings.ProductPageUrl))
+                appSettings.ProductPageUrl = settings.ProductPageUrl.Trim();
+            if (!string.IsNullOrWhiteSpace(settings.SurveyFormUrl))
+                appSettings.SurveyFormUrl = settings.SurveyFormUrl.Trim();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Runtime settings load failed: {ex.Message}");
+        }
+    }
+
+    private sealed class RuntimeSettings
+    {
+        public string? SupabaseUrl { get; set; }
+        public string? SupabaseAnonKey { get; set; }
+        public string? ContactUrl { get; set; }
+        public string? ProductPageUrl { get; set; }
+        public string? SurveyFormUrl { get; set; }
     }
 
     /// <summary>

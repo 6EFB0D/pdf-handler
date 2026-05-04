@@ -2,6 +2,8 @@
 // Copyright (c) 2024-2025 Goplan. All rights reserved.
 // Licensed under the MIT License. See LICENSE file in the project root for full license information.
 
+using System;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -199,8 +201,7 @@ public partial class LicenseManagerDialog : Window
                 license.ActivationDate = null;
                 await _licenseService.SaveLicenseAsync(license);
                 MessageBox.Show("このPCのライセンスを解除しました。", "完了", MessageBoxButton.OK, MessageBoxImage.Information);
-                DialogResult = true;
-                Close();
+                await CloseAfterDeactivateCurrentDeviceAsync();
                 return;
             }
             await LoadActivationsAsync();
@@ -210,6 +211,29 @@ public partial class LicenseManagerDialog : Window
         {
             MessageBox.Show("解除に失敗しました。ネットワーク接続を確認してください。", "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
         }
+    }
+
+    /// <summary>
+    /// 非同期ハンドラの続きで直接 DialogResult を触ると InvalidOperationException になることがあるため、
+    /// Dispatcher 上で閉じる。Show() で開かれた場合は DialogResult は使えないので Close のみ。
+    /// </summary>
+    private Task CloseAfterDeactivateCurrentDeviceAsync()
+    {
+        var tcs = new TaskCompletionSource();
+        Dispatcher.BeginInvoke(() =>
+        {
+            try
+            {
+                DialogResult = true;
+            }
+            catch (InvalidOperationException)
+            {
+                // ShowDialog 以外で表示された場合など
+            }
+            Close();
+            tcs.TrySetResult();
+        });
+        return tcs.Task;
     }
 
     private void CopyLicenseKey_Click(object sender, RoutedEventArgs e)

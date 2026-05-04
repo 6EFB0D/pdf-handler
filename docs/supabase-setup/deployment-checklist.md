@@ -12,6 +12,7 @@
 - [ ] `supabase/functions/create-checkout-session/deno.json` が存在する
 - [ ] `supabase/functions/verify-license/index.ts` が存在する
 - [ ] `supabase/functions/verify-license/deno.json` が存在する
+- [ ] `supabase/functions/_shared/compact-license-key.ts` が存在する（`admin-generate-license` / `verify-license` / `stripe-webhook` から参照）
 - [ ] `supabase/functions/import_map.json` が存在する
 
 ### 2. deno.json の設定確認

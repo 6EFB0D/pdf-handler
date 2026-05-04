@@ -13,6 +13,7 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "@supabase/supabase-js";
+import { generateCompactLicenseKey } from "../_shared/compact-license-key.ts";
 
 const SUPABASE_URL              = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -29,36 +30,6 @@ const APP_NAMES: Record<string, string> = {
 
 const MAX_COUNT   = 20; // 一括発行の上限
 const JSON_HEADERS = { "Content-Type": "application/json" };
-
-// ─── ライセンスキー生成（LicenseKeyHelper.cs と同アルゴリズム）──────────────
-async function generateLicenseKey(
-  secretKey: string,
-  formCode: string,
-): Promise<{ normalized: string; display: string }> {
-  const serialBytes = crypto.getRandomValues(new Uint8Array(14));
-  const serial = Array.from(serialBytes)
-    .map((b) => b.toString(16).padStart(2, "0").toUpperCase())
-    .join("");
-
-  const message   = `PDFH:${formCode}:${serial}`;
-  const cryptoKey = await crypto.subtle.importKey(
-    "raw",
-    new TextEncoder().encode(secretKey),
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"],
-  );
-  const sig     = await crypto.subtle.sign("HMAC", cryptoKey, new TextEncoder().encode(message));
-  const hmacStr = Array.from(new Uint8Array(sig))
-    .map((b) => b.toString(16).padStart(2, "0").toUpperCase())
-    .join("");
-
-  const normalized    = `PDFH-${formCode}-${serial}-${hmacStr}`;
-  const serialDisplay = (serial.match(/.{1,4}/g) ?? []).join("-");
-  const display       = `PDFH-${formCode}-${serialDisplay}-${hmacStr}`;
-
-  return { normalized, display };
-}
 
 // ─── メール本文（複数キー対応）────────────────────────────────────────────────
 function buildKeyBlock(key: string): string {
@@ -164,6 +135,7 @@ serve(async (req) => {
       userEmail,
       customerCompany    = null,
       customerContact    = null,
+      transactionId       = null,
       invoiceNumber      = null,
       paymentConfirmedAt = null,
       isActive           = true,
@@ -189,16 +161,19 @@ serve(async (req) => {
       );
     }
 
-    // 1. count 件分のライセンスキーを生成
-    const generatedKeys: Array<{ normalized: string; display: string }> = [];
+    // 1. count 件分のライセンスキーを生成（記号32文字・DBは4桁区切りで保存）
+    const rawApp = (String(appId ?? "PDFH")).toUpperCase().replace(/[^A-Z0-9]/g, "");
+    const appKey = rawApp.length >= 4 ? rawApp.slice(0, 4) : "PDFH";
+    const generatedKeys: Array<{ storageKey: string }> = [];
     for (let i = 0; i < count; i++) {
-      generatedKeys.push(await generateLicenseKey(LICENSE_SECRET_KEY, formCode));
+      const k = await generateCompactLicenseKey(LICENSE_SECRET_KEY, appKey, formCode);
+      generatedKeys.push({ storageKey: k.storageKey });
     }
 
     // 2. Supabase に一括 INSERT
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
     const records  = generatedKeys.map((k) => ({
-      license_key:          k.normalized,
+      license_key:          k.storageKey,
       plan:                 "purchased",
       app_id:               appId,
       user_email:           userEmail,
@@ -207,6 +182,7 @@ serve(async (req) => {
       payment_type:         "manual",
       customer_company:     customerCompany,
       customer_contact:     customerContact,
+      transaction_id:        transactionId,
       invoice_number:       invoiceNumber,
       payment_confirmed_at: paymentConfirmedAt,
       notes:                notes,
@@ -228,12 +204,12 @@ serve(async (req) => {
     // 3. レスポンス用データを組立て
     const licenses = inserted.map((row: { id: string }, i: number) => ({
       licenseId:         row.id,
-      licenseKeyDisplay: generatedKeys[i].display,
+      licenseKeyDisplay: generatedKeys[i].storageKey,
     }));
 
     const appName  = APP_NAMES[appId] ?? appId;
     const toName   = customerContact ?? userEmail;
-    const allKeys  = generatedKeys.map((k) => k.display);
+    const allKeys  = generatedKeys.map((k) => k.storageKey);
 
     // 4. メール送信（全キーを1通に集約、CC: support）
     let emailSent = false;

@@ -26,9 +26,9 @@
 ### ✅ このまま進めて問題ありません
 
 理由：
-1. **Edge Functionsのコードは既にプロジェクト内に配置済み**
-   - `docs/supabase-setup/03_edge-functions/`に配置されている
-   - このままSupabase CLIでデプロイ可能
+1. **Edge Functionsのコードは `supabase/functions/` に集約**
+   - **デプロイの正**: `pdf-handler/supabase/functions/`（`_shared` 含む。コンパクトライセンスキー実装と一致）
+   - `docs/supabase-setup/03_edge-functions/` は参照用コピー（README 参照）
 
 2. **GitHubリポジトリの構成は後で決められる**
    - セットアップ完了後にリポジトリを作成しても問題ない
@@ -61,8 +61,8 @@
 ## Edge Functionsのデプロイについて
 
 ### 現状
-- Edge Functionsのコードは`docs/supabase-setup/03_edge-functions/`に配置
-- Supabase CLIでデプロイする際は、このディレクトリから実行
+- **デプロイ元ディレクトリ**: `supabase/functions/`（プロジェクトルート直下）
+- `docs/supabase-setup/03_edge-functions/` はドキュメント用スナップショット（DEV/PROD 同一設計の説明用）
 
 ### 将来的な管理
 - Edge Functionsのコードも開発用リポジトリに含める

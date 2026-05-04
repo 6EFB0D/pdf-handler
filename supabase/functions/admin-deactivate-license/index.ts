@@ -58,9 +58,17 @@ serve(async (req) => {
     const noteText  = `【無効化 ${ts}】${reason ?? "管理者操作"}`;
     const newNotes  = license.notes ? `${license.notes}\n${noteText}` : noteText;
 
+    const revokedAt = new Date().toISOString();
+    const revokedReason = reason ?? "管理者操作";
+
     const { data: updated, error: updateError } = await supabase
       .from("licenses")
-      .update({ is_active: false, notes: newNotes })
+      .update({
+        is_active: false,
+        revoked_at: revokedAt,
+        revoked_reason: revokedReason,
+        notes: newNotes,
+      })
       .eq("id", license.id)
       .select()
       .single();

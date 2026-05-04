@@ -9,38 +9,46 @@ using System.Text.RegularExpressions;
 namespace PdfHandler.Infrastructure.Helpers;
 
 /// <summary>
-/// ライセンスキーの正規化・表示フォーマット・HMAC検証
-/// license-code-specification.md 準拠
+/// ライセンスキーの正規化・表示・HMAC 検証
+/// - コンパクト（記号32・Crockford 24）: API/DB 正準形は 4 文字ごとのハイフン区切り（計 32 記号 + 7 ハイフン）
+/// - 旧長形式: 16 進シリアル28 + HMAC
 /// </summary>
 public static class LicenseKeyHelper
 {
-    private static readonly Regex HmacKeyRegex = new(
-        @"^PDFH-(P[12]|S[12])(\d{2})-([0-9A-Fa-f]{28})-([0-9A-Fa-f]+)$",
+    private const string CrockfordAlphabet = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
+
+    private static readonly Regex LongHmacKeyRegex = new(
+        @"^([A-Z0-9]{4})-(P[12]|S[12])(\d{2})-([0-9A-Fa-f]{28})-([0-9A-Fa-f]+)$",
+        RegexOptions.Compiled);
+
+    private static readonly Regex CompactPlainRegex = new(
+        @"^(PDFH|ZIPS|PICT)(P[12]\d{2})([0-9A-HJKMNP-TV-Z]{24})$",
         RegexOptions.Compiled);
 
     /// <summary>
-    /// 正規化: 4桁区切り形式の入力を標準形式に変換（ハイフン除去してシリアル・HMACを連結）
-    /// 例: PDFH-P101-A1B2-C3D4-...-M3-1A2B → PDFH-P101-A1B2C3D4E5F6G7H8I9J0K1L2M3-1A2B
+    /// 正規化: DB 照合・API 送信用。コンパクトは区切り付き、長形式はハイフン最小形。
     /// </summary>
     public static string? Normalize(string? key)
     {
         if (string.IsNullOrWhiteSpace(key))
             return null;
 
+        var compact = NormalizeCompactToStorage(key);
+        if (compact != null)
+            return compact;
+
         var trimmed = key.Trim().ToUpperInvariant();
         var parts = trimmed.Split('-');
         if (parts.Length < 4)
             return null;
 
-        if (parts[0] != "PDFH")
+        if (parts[0].Length != 4 || !IsPrefixAlnum(parts[0]))
             return null;
 
         var formCode = parts[1];
         if (formCode.Length != 4)
             return null;
 
-        // parts[2]..parts[^1] がシリアル（ハイフン区切りかもしれない）
-        // parts[last] が HMAC
         var serialPart = string.Concat(parts.Skip(2).Take(parts.Length - 3));
         var hmacPart = parts[^1];
 
@@ -49,12 +57,11 @@ public static class LicenseKeyHelper
         if (hmacPart.Length == 0 || !IsHex(hmacPart))
             return null;
 
-        return $"PDFH-{formCode}-{serialPart}-{hmacPart}";
+        return $"{parts[0]}-{formCode}-{serialPart}-{hmacPart}";
     }
 
     /// <summary>
-    /// 旧形式（HMACなし PDFH-P101-28文字）の正規化
-    /// 4桁区切り入力にも対応（PDFH-P101-A1B2-C3D4-...-M3）
+    /// 旧形式（HMAC なし 28 桁 hex）
     /// </summary>
     public static string? NormalizeLegacy(string? key)
     {
@@ -63,7 +70,10 @@ public static class LicenseKeyHelper
 
         var trimmed = key.Trim().ToUpperInvariant();
         var parts = trimmed.Split('-');
-        if (parts.Length < 3 || parts[0] != "PDFH")
+        if (parts.Length < 3)
+            return null;
+
+        if (parts[0].Length != 4 || !IsPrefixAlnum(parts[0]))
             return null;
 
         var formCode = parts[1];
@@ -74,94 +84,220 @@ public static class LicenseKeyHelper
         if (serialPart.Length != 28 || !IsHex(serialPart))
             return null;
 
-        return $"PDFH-{formCode}-{serialPart}";
+        return $"{parts[0]}-{formCode}-{serialPart}";
     }
 
     /// <summary>
-    /// 表示用に4桁区切りでフォーマット
-    /// 例: PDFH-P101-A1B2C3D4... → PDFH-P101-A1B2-C3D4-E5F6-G7H8-I9J0-K1L2-M3
-    /// HMAC部があれば末尾に付加（4桁区切りしない）
+    /// ユーザー向け表示（コンパクトは既に区切り済みならそのまま）
     /// </summary>
     public static string FormatForDisplay(string? normalizedKey)
     {
         if (string.IsNullOrEmpty(normalizedKey))
             return "";
 
-        var match = HmacKeyRegex.Match(normalizedKey);
+        var plain = ToCanonicalPlain32(normalizedKey);
+        if (plain != null)
+            return FormatStorageFromPlain32(plain);
+
+        var match = LongHmacKeyRegex.Match(normalizedKey);
         if (match.Success)
         {
-            var formCode = match.Groups[1].Value + match.Groups[2].Value;
-            var serial = match.Groups[3].Value;
-            var hmac = match.Groups[4].Value;
-
-            // シリアルを4桁区切り
+            var formCode = match.Groups[2].Value + match.Groups[3].Value;
+            var serial = match.Groups[4].Value;
+            var hmac = match.Groups[5].Value;
             var sb = new StringBuilder();
             for (var i = 0; i < serial.Length; i += 4)
             {
                 if (i > 0) sb.Append('-');
                 sb.Append(serial.Substring(i, Math.Min(4, serial.Length - i)));
             }
-            return $"PDFH-{formCode}-{sb}-{hmac}";
+            return $"{match.Groups[1].Value}-{formCode}-{sb}-{hmac}";
         }
 
-        // 旧形式
-        var legacyMatch = Regex.Match(normalizedKey, @"^PDFH-(P[12]|S[12])(\d{2})-([0-9A-Fa-f]{28})$");
+        var legacyMatch = Regex.Match(normalizedKey,
+            @"^([A-Z0-9]{4})-(P[12]|S[12])(\d{2})-([0-9A-Fa-f]{28})$");
         if (legacyMatch.Success)
         {
-            var formCode = legacyMatch.Groups[1].Value + legacyMatch.Groups[2].Value;
-            var serial = legacyMatch.Groups[3].Value;
+            var formCode = legacyMatch.Groups[2].Value + legacyMatch.Groups[3].Value;
+            var serial = legacyMatch.Groups[4].Value;
             var sb = new StringBuilder();
             for (var i = 0; i < serial.Length; i += 4)
             {
                 if (i > 0) sb.Append('-');
                 sb.Append(serial.Substring(i, Math.Min(4, serial.Length - i)));
             }
-            return $"PDFH-{formCode}-{sb}";
+            return $"{legacyMatch.Groups[1].Value}-{formCode}-{sb}";
         }
 
         return normalizedKey;
     }
 
-    /// <summary>
-    /// HMACオフライン検証
-    /// 署名対象: PDFH:P101:{シリアル部}
-    /// </summary>
+    /// <summary>HMAC オフライン検証（長形式・コンパクト両方）</summary>
     public static bool VerifyHmac(string? normalizedKey, string? secretKey)
     {
         if (string.IsNullOrEmpty(normalizedKey) || string.IsNullOrEmpty(secretKey))
             return false;
 
-        var match = HmacKeyRegex.Match(normalizedKey);
+        if (VerifyCompactHmac(normalizedKey, secretKey))
+            return true;
+
+        var match = LongHmacKeyRegex.Match(normalizedKey);
         if (!match.Success)
             return false;
 
-        var formCode = match.Groups[1].Value + match.Groups[2].Value;
-        var serial = match.Groups[3].Value;
-        var expectedHmac = match.Groups[4].Value;
+        var prefix = match.Groups[1].Value;
+        var formCode = match.Groups[2].Value + match.Groups[3].Value;
+        var serial = match.Groups[4].Value;
+        var expectedHmac = match.Groups[5].Value;
+        return HmacHexPrefixMatches(prefix, formCode, serial, expectedHmac, secretKey);
+    }
 
-        var message = $"PDFH:{formCode}:{serial}";
+    public static bool IsHmacFormat(string? normalizedKey)
+    {
+        if (string.IsNullOrEmpty(normalizedKey))
+            return false;
+        if (ToCanonicalPlain32(normalizedKey) != null)
+            return true;
+        return LongHmacKeyRegex.IsMatch(normalizedKey);
+    }
+
+    private static string? NormalizeCompactToStorage(string key)
+    {
+        var plain = ToCanonicalPlain32(key);
+        return plain == null ? null : FormatStorageFromPlain32(plain);
+    }
+
+    private static string? ToCanonicalPlain32(string key)
+    {
+        var sb = new StringBuilder();
+        foreach (var c in key.Trim())
+        {
+            if (c == '-' || char.IsWhiteSpace(c))
+                continue;
+            sb.Append(char.ToUpperInvariant(c));
+        }
+
+        var s = sb.ToString();
+        if (s.Length != 32 || !CompactPlainRegex.IsMatch(s))
+            return null;
+
+        var dec = DecodeCrockford24(s.AsSpan(8));
+        if (dec == null || dec.Length != 15)
+            return null;
+
+        return s[..8] + EncodeCrockford15(dec);
+    }
+
+    private static string FormatStorageFromPlain32(string plain32)
+    {
+        var sb = new StringBuilder();
+        for (var i = 0; i < 32; i += 4)
+        {
+            if (i > 0) sb.Append('-');
+            sb.Append(plain32, i, 4);
+        }
+        return sb.ToString();
+    }
+
+    private static bool VerifyCompactHmac(string storageOrPlain, string secretKey)
+    {
+        var plain = ToCanonicalPlain32(storageOrPlain);
+        if (plain == null)
+            return false;
+
+        var prefix = plain[..4];
+        var formCode = plain.Substring(4, 4);
+        var dec = DecodeCrockford24(plain.AsSpan(8));
+        if (dec == null || dec.Length != 15)
+            return false;
+
+        var serial11 = dec.AsSpan(0, 11);
+        var mac4 = dec.AsSpan(11, 4);
+        var hex11 = Convert.ToHexString(serial11);
+        var message = $"{prefix}:{formCode}:{hex11}";
+
         var keyBytes = Encoding.UTF8.GetBytes(secretKey);
         var messageBytes = Encoding.UTF8.GetBytes(message);
+        using var hmac = new HMACSHA256(keyBytes);
+        var hash = hmac.ComputeHash(messageBytes);
+        return mac4.SequenceEqual(hash.AsSpan(0, 4));
+    }
 
+    private static bool HmacHexPrefixMatches(
+        string prefix, string formCode, string serial, string expectedHmac, string secretKey)
+    {
+        var message = $"{prefix}:{formCode}:{serial}";
+        var keyBytes = Encoding.UTF8.GetBytes(secretKey);
+        var messageBytes = Encoding.UTF8.GetBytes(message);
         using var hmac = new HMACSHA256(keyBytes);
         var hash = hmac.ComputeHash(messageBytes);
         var computedHmac = BitConverter.ToString(hash).Replace("-", "").ToUpperInvariant();
-
-        // 署名は先頭8文字以上で比較（stripe-webhook と同期）
         var compareLen = Math.Min(expectedHmac.Length, Math.Max(8, computedHmac.Length));
         if (compareLen <= 0 || computedHmac.Length < compareLen)
             return false;
-        return string.Compare(computedHmac.Substring(0, compareLen),
-            expectedHmac.Substring(0, compareLen),
+        return string.Compare(
+            computedHmac[..compareLen],
+            expectedHmac[..compareLen],
             StringComparison.OrdinalIgnoreCase) == 0;
     }
 
-    /// <summary>
-    /// HMAC付き形式かどうか
-    /// </summary>
-    public static bool IsHmacFormat(string? normalizedKey)
+    private static string EncodeCrockford15(ReadOnlySpan<byte> bytes)
     {
-        return !string.IsNullOrEmpty(normalizedKey) && HmacKeyRegex.IsMatch(normalizedKey);
+        if (bytes.Length != 15)
+            throw new ArgumentException("need 15 bytes");
+        ulong buffer = 0;
+        var bits = 0;
+        Span<char> chars = stackalloc char[24];
+        var n = 0;
+        for (var i = 0; i < 15; i++)
+        {
+            buffer = (buffer << 8) | (ulong)bytes[i];
+            bits += 8;
+            while (bits >= 5)
+            {
+                bits -= 5;
+                var idx = (int)((buffer >> bits) & 31);
+                chars[n++] = CrockfordAlphabet[idx];
+            }
+        }
+        if (bits > 0)
+        {
+            var idx = (int)((buffer << (5 - bits)) & 31);
+            chars[n++] = CrockfordAlphabet[idx];
+        }
+        return new string(chars[..24]);
+    }
+
+    private static byte[]? DecodeCrockford24(ReadOnlySpan<char> s)
+    {
+        if (s.Length != 24)
+            return null;
+        Span<int> rev = stackalloc int[256];
+        rev.Fill(-1);
+        for (var i = 0; i < CrockfordAlphabet.Length; i++)
+        {
+            rev[CrockfordAlphabet[i]] = i;
+        }
+        ulong buffer = 0;
+        var bits = 0;
+        var outList = new List<byte>(15);
+        for (var j = 0; j < s.Length; j++)
+        {
+            var c = s[j];
+            if (c >= 256)
+                return null;
+            var idx = rev[c];
+            if (idx < 0)
+                return null;
+            buffer = (buffer << 5) | (ulong)(uint)idx;
+            bits += 5;
+            while (bits >= 8)
+            {
+                bits -= 8;
+                outList.Add((byte)((buffer >> bits) & 0xFFUL));
+            }
+        }
+        return outList.Count == 15 ? outList.ToArray() : null;
     }
 
     private static bool IsHex(string s)
@@ -169,6 +305,16 @@ public static class LicenseKeyHelper
         foreach (var c in s)
         {
             if (!((c >= '0' && c <= '9') || (c >= 'A' && c <= 'F')))
+                return false;
+        }
+        return true;
+    }
+
+    private static bool IsPrefixAlnum(string s)
+    {
+        foreach (var c in s)
+        {
+            if (!((c >= '0' && c <= '9') || (c >= 'A' && c <= 'Z')))
                 return false;
         }
         return true;

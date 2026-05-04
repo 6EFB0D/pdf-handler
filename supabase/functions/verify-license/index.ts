@@ -3,9 +3,17 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "@supabase/supabase-js";
+import { normalizeCompactToStorage } from "../_shared/compact-license-key.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
-const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+const CUSTOM_SERVICE_ROLE_KEY = Deno.env.get("PDFHANDLER_SUPABASE_SERVICE_ROLE_KEY") || "";
+const RESERVED_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+const SUPABASE_SERVICE_ROLE_KEY = CUSTOM_SERVICE_ROLE_KEY || RESERVED_SERVICE_ROLE_KEY;
+const SERVICE_ROLE_KEY_SOURCE = CUSTOM_SERVICE_ROLE_KEY
+  ? "PDFHANDLER_SUPABASE_SERVICE_ROLE_KEY"
+  : RESERVED_SERVICE_ROLE_KEY
+    ? "SUPABASE_SERVICE_ROLE_KEY"
+    : "missing";
 
 interface RequestBody {
   licenseKey: string;
@@ -52,7 +60,6 @@ serve(async (req) => {
       .from("licenses")
       .select("*")
       .eq("license_key", normalizedKey)
-      .eq("is_active", true)
       .single();
 
     if (licenseError || !license) {
@@ -70,19 +77,36 @@ serve(async (req) => {
         }
       );
     }
+    if (!license.is_active) {
+      return new Response(
+        JSON.stringify({
+          isValid: false,
+          errorMessage: license.revoked_at
+            ? "このライセンスは無効化されています"
+            : "このライセンスは一時停止中です",
+        }),
+        {
+          status: 200,
+          headers: {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*",
+          },
+        }
+      );
+    }
 
     // 買い切り版の場合は常に有効
     if (license.plan === "purchased") {
       // ハードウェアIDのアクティベーションをチェック・登録
+      // 解除済み行が残っている場合は UNIQUE(license_id, hardware_id) のため再 insert せず再有効化する。
       const { data: activation } = await supabase
         .from("license_activations")
         .select("*")
         .eq("license_id", license.id)
         .eq("hardware_id", hardwareId)
-        .eq("is_active", true)
-        .single();
+        .maybeSingle();
 
-      if (!activation) {
+      if (!activation || !activation.is_active) {
         // デバイス数上限チェック（ZipSearch / PictComp も同じ上限を共有）
         const DEVICE_LIMIT = 1;
         const { count: activeCount } = await supabase
@@ -103,7 +127,7 @@ serve(async (req) => {
           );
         }
 
-        // 初回アクティベーション: purchased_version が未設定なら設定
+        // 初回または再アクティベーション: purchased_version が未設定なら設定
         let purchasedVersion = license.purchased_version;
         if (!purchasedVersion) {
           purchasedVersion = parsePurchasedVersionFromKey(license.license_key) ?? getMajorFromAppVersion(appVersion) ?? "1";
@@ -116,23 +140,42 @@ serve(async (req) => {
           license.purchased_version = purchasedVersion;
         }
 
-        // アクティベーションが存在しない場合は作成
-        const { error: activationError } = await supabase
-          .from("license_activations")
-          .insert({
-            license_id: license.id,
-            hardware_id: hardwareId,
-            device_name: deviceName ?? null,
-            activation_date: new Date().toISOString(),
-            last_verification_date: new Date().toISOString(),
-            is_active: true,
-          });
+        const activationPayload = {
+          license_id: license.id,
+          hardware_id: hardwareId,
+          device_name: deviceName ?? null,
+          activation_date: new Date().toISOString(),
+          last_verification_date: new Date().toISOString(),
+          is_active: true,
+        };
+
+        const activationResult = activation
+          ? await supabase
+              .from("license_activations")
+              .update({
+                ...activationPayload,
+                deactivated_at: null,
+                reactivated_at: new Date().toISOString(),
+              })
+              .eq("id", activation.id)
+          : await supabase
+              .from("license_activations")
+              .insert(activationPayload);
+
+        const activationError = activationResult.error;
 
         if (activationError) {
+          console.error("Activation upsert error:", activationError);
           return new Response(
             JSON.stringify({
               isValid: false,
               errorMessage: "アクティベーションの登録に失敗しました",
+              debugCode: activationError.code ?? null,
+              debugMessage: activationError.message ?? null,
+              debugDetails: activationError.details ?? null,
+              debugHint: activationError.hint ?? null,
+              debugKeySource: SERVICE_ROLE_KEY_SOURCE,
+              debugKeyRole: getJwtRole(SUPABASE_SERVICE_ROLE_KEY),
             }),
             {
               status: 200,
@@ -223,12 +266,28 @@ serve(async (req) => {
   }
 });
 
+function getJwtRole(jwt: string): string | null {
+  try {
+    const parts = jwt.split(".");
+    if (parts.length < 2) return null;
+    const payload = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    const padded = payload.padEnd(payload.length + ((4 - payload.length % 4) % 4), "=");
+    const json = JSON.parse(atob(padded));
+    return typeof json.role === "string" ? json.role : null;
+  } catch {
+    return null;
+  }
+}
+
 /**
- * ライセンスキーを正規化（4桁区切り入力→標準形式）
- * PDFH-P101-A1B2-C3D4-...-M3-1A2B → PDFH-P101-A1B2C3D4...-1A2B
+ * ライセンスキーを DB 照合形式に正規化（コンパクト区切り → 長い HMAC 形式など）
  */
 function normalizeLicenseKey(key: string): string | null {
   if (!key || typeof key !== "string") return null;
+
+  const compact = normalizeCompactToStorage(key);
+  if (compact) return compact;
+
   const trimmed = key.trim().toUpperCase();
   const parts = trimmed.split("-");
   if (parts.length < 3) return null;
@@ -238,7 +297,6 @@ function normalizeLicenseKey(key: string): string | null {
   const formCode = parts[1];
   if (formCode.length !== 4) return null;
 
-  // HMAC形式: {app_id}-P101-{serial(28)}-{hmac} （最後がHMAC、その前がシリアル）
   if (parts.length >= 5) {
     const serialPart = parts.slice(2, -1).join("");
     const hmacPart = parts[parts.length - 1];
@@ -247,7 +305,6 @@ function normalizeLicenseKey(key: string): string | null {
     }
   }
 
-  // 旧形式: {app_id}-P101-28文字（4桁区切り入力時は複数パーツ）
   const serialPartLegacy = parts.slice(2).join("");
   if (serialPartLegacy.length === 28 && /^[0-9A-F]+$/.test(serialPartLegacy)) {
     return `${prefix}-${formCode}-${serialPartLegacy}`;
@@ -256,11 +313,20 @@ function normalizeLicenseKey(key: string): string | null {
   return null;
 }
 
-/** 新形式 PDFH-P101-xxx から purchased_version を取得。旧形式は null */
+/** コンパクト（記号32・区切り付き含む）または旧形式から purchased_version */
 function parsePurchasedVersionFromKey(key: string): string | null {
-  const m = key.match(/^PDFH-(P[12])(\d{2})-/);
-  if (!m) return null;
-  const ver = m[2];
+  const flat = key.replace(/[\s-]/g, "").toUpperCase();
+  if (flat.length === 32 && /^(PDFH|ZIPS|PICT)P[12]\d{2}/.test(flat)) {
+    const form = flat.slice(4, 8);
+    const m = form.match(/^P([12])(\d{2})$/);
+    if (m) {
+      const ver = m[2];
+      return ver === "00" ? null : String(parseInt(ver, 10));
+    }
+  }
+  const m2 = key.match(/^PDFH-(P[12])(\d{2})-/);
+  if (!m2) return null;
+  const ver = m2[2];
   return ver === "00" ? null : String(parseInt(ver, 10));
 }
 

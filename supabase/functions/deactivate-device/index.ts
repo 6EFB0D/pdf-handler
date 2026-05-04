@@ -87,7 +87,7 @@ serve(async (req) => {
     // デアクティベート
     const { error: updateError } = await supabase
       .from("license_activations")
-      .update({ is_active: false })
+      .update({ is_active: false, deactivated_at: new Date().toISOString() })
       .eq("id", activationId);
 
     if (updateError) {

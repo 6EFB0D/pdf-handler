@@ -14,6 +14,31 @@
 .\build.ps1 -NoKill      # プロセス終了をスキップしてビルド（アプリ未起動時向け）
 ```
 
+### `run-dev.ps1`
+DEV Supabase に向けてアプリを起動します。日常開発・機能確認用です。
+
+```powershell
+.\run-dev.ps1
+```
+
+### `run-prod.ps1`
+PROD Supabase に向けてアプリを起動します。本番ライセンスキーの検証用です。
+PROD anon key はリポジトリに保存せず、環境変数または引数で渡してください。
+
+```powershell
+$env:PDFHANDLER_PROD_SUPABASE_ANON_KEY = "sb_publishable_..."
+.\run-prod.ps1
+```
+
+### `build-release.ps1`
+5/1 納品向けの Release パッケージを `artifacts/release/` に作成します。
+`PdfHandler.runtime.json` を exe と同じフォルダへ出力し、顧客環境では環境変数なしで PROD Supabase を参照します。
+
+```powershell
+$env:PDFHANDLER_PROD_SUPABASE_ANON_KEY = "sb_publishable_..."
+.\build-release.ps1
+```
+
 ## 前提条件
 
 ### ライセンス管理スクリプト
