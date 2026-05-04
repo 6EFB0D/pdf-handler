@@ -1,0 +1,134 @@
+name: Dependency Vulnerability Scan
+
+on:
+  schedule:
+    - cron: '0 20 * * 0'  # 毎週日曜 JST 05:00 (UTC 20:00)
+  pull_request:
+    paths:
+      - 'src/**/*.csproj'
+      - 'package*.json'
+      - 'supabase/functions/import_map.json'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  dotnet-audit:
+    name: .NET NuGet Vulnerability Scan
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore NuGet packages
+        run: dotnet restore PdfHandler.sln
+
+      - name: Scan for vulnerable packages
+        shell: pwsh
+        run: |
+          $projects = @(
+            'src/PdfHandler.Core/PdfHandler.Core.csproj',
+            'src/PdfHandler.Infrastructure/PdfHandler.Infrastructure.csproj',
+            'src/PdfHandler.UI/PdfHandler.UI.csproj'
+          )
+          $report = "# dotnet vulnerability scan`n"
+          $report += "# date: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') UTC`n"
+          $report += "# dotnet: $(dotnet --version)`n`n"
+          $found = $false
+          foreach ($p in $projects) {
+            $report += "## $p`n"
+            $out = (dotnet list $p package --vulnerable --include-transitive 2>&1) -join "`n"
+            $report += $out + "`n`n"
+            if ($out -match 'has the following vulnerable packages') { $found = $true }
+          }
+          $report | Out-File -FilePath dotnet-vuln-report.txt -Encoding utf8
+          Write-Output $report
+          if ($found) {
+            Write-Output "::warning::Vulnerable NuGet packages detected."
+            "DOTNET_VULN=true" | Out-File -FilePath $env:GITHUB_ENV -Append
+          } else {
+            Write-Output "✅ No vulnerable NuGet packages found."
+            "DOTNET_VULN=false" | Out-File -FilePath $env:GITHUB_ENV -Append
+          }
+
+      - name: Write job summary
+        shell: pwsh
+        run: |
+          $status = if ($env:DOTNET_VULN -eq 'true') { 'VULNERABLE PACKAGES DETECTED' } else { 'No vulnerabilities found' }
+          $lines = @(
+            "## .NET NuGet Vulnerability Scan",
+            "",
+            "| Item | Value |",
+            "|------|-------|",
+            "| Status | $status |",
+            "| Date | $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') UTC |",
+            "| Projects | Core / Infrastructure / UI |",
+            ""
+          )
+          $lines | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dotnet-vuln-report-${{ github.run_id }}
+          path: dotnet-vuln-report.txt
+          retention-days: 90
+
+  npm-audit:
+    name: npm Dependency Audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run npm audit
+        run: |
+          npm audit --json > npm-audit-report.json 2>&1 || true
+          npm audit 2>&1 | tee npm-audit-summary.txt || true
+
+      - name: Check for high/critical vulnerabilities
+        run: |
+          HIGH=$(node -e "
+            const d = JSON.parse(require('fs').readFileSync('npm-audit-report.json','utf8'));
+            const v = (d.metadata || {}).vulnerabilities || {};
+            process.stdout.write(String((v.high || 0) + (v.critical || 0)));
+          " 2>/dev/null || echo "0")
+          echo "High+Critical: $HIGH"
+          if [ "$HIGH" -gt "0" ]; then
+            echo "::warning::High or critical npm vulnerabilities found."
+          else
+            echo "✅ No high/critical npm vulnerabilities."
+          fi
+          echo "NPM_HIGH_CRITICAL=$HIGH" >> $GITHUB_ENV
+
+      - name: Write job summary
+        run: |
+          STATUS=$([ "$NPM_HIGH_CRITICAL" = "0" ] && echo "No vulnerabilities found" || echo "VULNERABILITIES DETECTED")
+          {
+            echo "## npm Dependency Audit"
+            echo ""
+            echo "| Item | Value |"
+            echo "|------|-------|"
+            echo "| Status | $STATUS |"
+            echo "| High+Critical | $NPM_HIGH_CRITICAL |"
+            echo "| Date | $(date -u '+%Y-%m-%d %H:%M:%S') UTC |"
+            echo ""
+          } >> $GITHUB_STEP_SUMMARY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: npm-audit-report-${{ github.run_id }}
+          path: |
+            npm-audit-report.json
+            npm-audit-summary.txt
+          retention-days: 90
