@@ -207,6 +207,7 @@ Dashboard → `License Manager_PROD` → Project Settings → Edge Functions →
 | `STRIPE_SECRET_KEY` | Stripe Dashboard（**本番**用 `sk_live_...`／復活待ち）| ✅ |
 | `STRIPE_WEBHOOK_SECRET` | Stripe Dashboard → Webhooks → 新規 PROD エンドポイントの whsec | ✅ |
 | `STRIPE_PRICE_ID_PURCHASED` | Stripe Dashboard（本番モードの Price ID）| ✅ |
+| `STRIPE_ENABLE_JP_BANK_TRANSFER` | `true` の場合のみ Checkout に日本の銀行振込（`customer_balance`）を追加。未設定/false はカードのみ。 | 任意 |
 | `LICENSE_SECRET_KEY` | **新規生成**（32 文字以上のランダム英数字）| ✅ |
 | `ADMIN_API_KEY` | **新規生成**（32 文字以上のランダム英数字／GUI ツールから admin-* 関数を呼ぶ際の認証）| ✅ |
 | `RESEND_API_KEY` | Resend Dashboard（DEV と同一でも可だが分離推奨）| 推奨 |

@@ -39,7 +39,8 @@ public class SupabaseLicenseService
             var request = new
             {
                 licenseKey = licenseKey,
-                hardwareId = _hardwareId
+                hardwareId = _hardwareId,
+                clientAppId = PdfHandlerLicensing.ClientAppId,
             };
 
             var json = JsonSerializer.Serialize(request);

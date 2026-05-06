@@ -1,18 +1,29 @@
 # Launch PDF Handler against the PROD Supabase project.
-# Pass -SupabaseAnonKey or set PDFHANDLER_PROD_SUPABASE_ANON_KEY in your shell.
+# Pass -SupabaseAnonKey, set PDFHANDLER_PROD_SUPABASE_ANON_KEY,
+# or place it in scripts\Secrets.local.ps1 (git ignored).
 
 param(
-    [string]$SupabaseAnonKey = $env:PDFHANDLER_PROD_SUPABASE_ANON_KEY,
+    [string]$SupabaseAnonKey = "",
     [switch]$NoBuild
 )
 
 $ErrorActionPreference = "Stop"
+
+$secretsPath = Join-Path $PSScriptRoot "Secrets.local.ps1"
+if (Test-Path $secretsPath) {
+    . $secretsPath
+}
+
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $uiProject = Join-Path $projectRoot "src\PdfHandler.UI\PdfHandler.UI.csproj"
 $prodUrl = "https://kmrzktsykjibslajpecu.supabase.co"
 
 if ([string]::IsNullOrWhiteSpace($SupabaseAnonKey)) {
-    throw "PROD Supabase anon key is required. Set PDFHANDLER_PROD_SUPABASE_ANON_KEY or pass -SupabaseAnonKey."
+    $SupabaseAnonKey = $env:PDFHANDLER_PROD_SUPABASE_ANON_KEY
+}
+
+if ([string]::IsNullOrWhiteSpace($SupabaseAnonKey)) {
+    throw "PROD Supabase anon key is required. Set PDFHANDLER_PROD_SUPABASE_ANON_KEY, pass -SupabaseAnonKey, or create scripts\Secrets.local.ps1 from scripts\Secrets.local.ps1.example."
 }
 
 $env:SUPABASE_URL = $prodUrl

@@ -4,6 +4,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "@supabase/supabase-js";
 import { normalizeCompactToStorage } from "../_shared/compact-license-key.ts";
+import { assertLicenseBelongsToClientApp } from "../_shared/license-app-guard.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
 const CUSTOM_SERVICE_ROLE_KEY = Deno.env.get("PDFHANDLER_SUPABASE_SERVICE_ROLE_KEY") || "";
@@ -18,6 +19,8 @@ const SERVICE_ROLE_KEY_SOURCE = CUSTOM_SERVICE_ROLE_KEY
 interface RequestBody {
   licenseKey: string;
   hardwareId: string;
+  /** クライアント製品コード（PDFH / ZIPS / PICT）。licenses.app_id およびキー先頭と一致必須 */
+  clientAppId: string;
   deviceName?: string; // アクティベーション時の PC 名（Environment.MachineName）
   appVersion?: string; // アプリのバージョン（例: "1.0.0"）、初回アクティベーション時に purchased_version 設定に使用
 }
@@ -35,7 +38,7 @@ serve(async (req) => {
       });
     }
 
-    const { licenseKey, hardwareId, deviceName, appVersion }: RequestBody = await req.json();
+    const { licenseKey, hardwareId, clientAppId, deviceName, appVersion }: RequestBody = await req.json();
 
     if (!licenseKey || !hardwareId) {
       return new Response(
@@ -77,6 +80,24 @@ serve(async (req) => {
         }
       );
     }
+
+    const appGuard = assertLicenseBelongsToClientApp(license, clientAppId);
+    if (!appGuard.ok) {
+      return new Response(
+        JSON.stringify({
+          isValid: false,
+          errorMessage: appGuard.userMessage,
+        }),
+        {
+          status: 200,
+          headers: {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*",
+          },
+        }
+      );
+    }
+
     if (!license.is_active) {
       return new Response(
         JSON.stringify({

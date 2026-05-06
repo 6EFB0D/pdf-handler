@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Net.Http;
 using System.Net.Mail;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -162,7 +163,12 @@ public class PaymentService : IPaymentService
     {
         try
         {
-            var request = new { licenseKey };
+            var request = new
+            {
+                licenseKey,
+                hardwareId = BuildHardwareFingerprint(),
+                clientAppId = PdfHandlerLicensing.ClientAppId,
+            };
 
             var json = JsonSerializer.Serialize(request);
             var content = new StringContent(json, Encoding.UTF8, "application/json");
@@ -184,6 +190,22 @@ public class PaymentService : IPaymentService
         {
             DebugLogger.WriteLine($"ライセンスキー検証エラー: {ex.GetType().Name} - {ex.Message}");
             return false;
+        }
+    }
+
+    private static string BuildHardwareFingerprint()
+    {
+        try
+        {
+            var combined =
+                $"{Environment.MachineName}|{Environment.UserName}|{Environment.OSVersion}|{Environment.ProcessorCount}";
+            using var sha256 = SHA256.Create();
+            var hash = sha256.ComputeHash(Encoding.UTF8.GetBytes(combined));
+            return Convert.ToBase64String(hash);
+        }
+        catch
+        {
+            return Guid.NewGuid().ToString();
         }
     }
 }

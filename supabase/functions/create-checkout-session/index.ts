@@ -86,6 +86,7 @@ async function createCheckoutSession(params: {
   success_url: string;
   cancel_url: string;
   customerId: string;
+  enableJpBankTransfer: boolean;
   metadata: { plan: string; app_id: string; major_version: string };
 }): Promise<{ url: string | null }> {
   const body = new URLSearchParams();
@@ -100,11 +101,13 @@ async function createCheckoutSession(params: {
   body.set("metadata[app_id]",        params.metadata.app_id);
   body.set("metadata[major_version]", params.metadata.major_version);
 
-  // 支払方法：カード + 銀行振込（日本）
+  // 支払方法：既定はカードのみ。銀行振込は Stripe 側で有効化済みの場合だけ追加する。
   body.set("payment_method_types[0]", "card");
-  body.set("payment_method_types[1]", "customer_balance");
-  body.set("payment_method_options[customer_balance][funding_type]",             "bank_transfer");
-  body.set("payment_method_options[customer_balance][bank_transfer][type]",      "jp_bank_transfer");
+  if (params.enableJpBankTransfer) {
+    body.set("payment_method_types[1]", "customer_balance");
+    body.set("payment_method_options[customer_balance][funding_type]", "bank_transfer");
+    body.set("payment_method_options[customer_balance][bank_transfer][type]", "jp_bank_transfer");
+  }
 
   // 請求書（Invoice）の自動発行を有効化
   // → Invoice-XXX.pdf と Receipt-XXX.pdf が正式なフォーマットで発行される
@@ -199,7 +202,12 @@ serve(async (req) => {
         : ""
     ) || (Deno.env.get("LICENSE_PURCHASED_MAJOR_VERSION") ?? "1");
 
-    // 銀行振込(customer_balance)のため、Checkout前にCustomerを先に作成する必要あり
+    const enableJpBankTransfer = (Deno.env.get("STRIPE_ENABLE_JP_BANK_TRANSFER") ?? "")
+      .trim()
+      .toLowerCase() === "true";
+
+    // Customer はカード決済でも再利用・領収書管理に使えるため作成する。
+    // 銀行振込(customer_balance)を有効化する場合も Checkout 前の customer 指定が必要。
     const customerId = await createCustomer(apiKey, customerEmail);
 
     const session = await createCheckoutSession({
@@ -208,6 +216,7 @@ serve(async (req) => {
       success_url,
       cancel_url,
       customerId,
+      enableJpBankTransfer,
       metadata: { plan, app_id, major_version },
     });
 

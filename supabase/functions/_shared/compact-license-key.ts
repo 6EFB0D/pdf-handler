@@ -4,14 +4,17 @@
  * - Supabase 用正準形: 全体を4文字ごとにハイフン（計 32+7=39 文字）
  */
 
+import { normalizeLicensePaste } from "./license-paste-normalize.ts";
+
 const CROCKFORD = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
 
 /** ハイフンを除いた正準32文字 */
 export const COMPACT_PLAIN_RE =
   /^(PDFH|ZIPS|PICT)(P[12]\d{2})([0-9A-HJKMNP-TV-Z]{24})$/;
 
+/** 異種ハイフン除去後、空白類と '-' を削除（平文32用） */
 export function stripSeparators(key: string): string {
-  return key.replace(/[\s-]/g, "");
+  return normalizeLicensePaste(key).replace(/[\s-]/g, "");
 }
 
 /** 32文字（平文）→ Supabase / メール / UI 用の区切り形式 */
@@ -82,6 +85,52 @@ export function normalizeCompactToStorage(input: string): string | null {
   const plain = toCanonicalPlain32(input);
   if (!plain) return null;
   return formatStorageFromPlain32(plain);
+}
+
+/** PREFIX-FORM-24Crockford（区切り3ブロックのみ）が誤って保存されていてもマッチさせるための別形 */
+export function compactTripleSegmentForm(canonicalHyphenFull: string): string | null {
+  const plain = toCanonicalPlain32(canonicalHyphenFull);
+  if (!plain) return null;
+  const prefix = plain.slice(0, 4);
+  const form = plain.slice(4, 8);
+  const crock = plain.slice(8);
+  return `${prefix}-${form}-${crock}`;
+}
+
+/** 入力に対応する DB 検索用文字列一覧（順不同・重複は呼び出し側で uniq） */
+export function compactLookupKeyVariants(userInput: string): string[] {
+  userInput = normalizeLicensePaste(userInput);
+  if (!userInput) return [];
+
+  const canon = normalizeCompactToStorage(userInput);
+  const out: string[] = [];
+
+  const stripped = stripSeparators(userInput).toUpperCase();
+  if (
+    stripped.length === 32 && COMPACT_PLAIN_RE.test(stripped)
+  ) {
+    const canonFromPlain = normalizeCompactToStorage(stripped);
+    if (canonFromPlain) out.push(canonFromPlain);
+  }
+
+  const m = userInput.trim().toUpperCase().match(
+    /^(PDFH|ZIPS|PICT)-(P[12]\d{2})-([0-9A-HJKMNP-TV-Z]{24})$/,
+  );
+  if (m) {
+    const fromTriple = normalizeCompactToStorage(`${m[1]}${m[2]}${m[3]}`);
+    if (fromTriple) out.push(fromTriple);
+  }
+
+  if (canon) {
+    out.push(canon);
+    const triple = compactTripleSegmentForm(canon);
+    if (triple && triple !== canon) out.push(triple);
+    const flat = stripSeparators(canon);
+    if (flat.length === 32 && flat !== canon) out.push(flat);
+  }
+
+  const dedup = new Set(out.filter(Boolean));
+  return [...dedup];
 }
 
 export async function generateCompactLicenseKey(

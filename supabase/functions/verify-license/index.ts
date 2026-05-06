@@ -3,7 +3,10 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "@supabase/supabase-js";
-import { normalizeCompactToStorage } from "../_shared/compact-license-key.ts";
+import { assertLicenseBelongsToClientApp } from "../_shared/license-app-guard.ts";
+import {
+  licenseDbLookupKeys,
+} from "../_shared/license-db-lookup.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
 const CUSTOM_SERVICE_ROLE_KEY = Deno.env.get("PDFHANDLER_SUPABASE_SERVICE_ROLE_KEY") || "";
@@ -18,6 +21,8 @@ const SERVICE_ROLE_KEY_SOURCE = CUSTOM_SERVICE_ROLE_KEY
 interface RequestBody {
   licenseKey: string;
   hardwareId: string;
+  /** クライアント製品コード（PDFH / ZIPS / PICT）。licenses.app_id およびキー先頭と一致必須 */
+  clientAppId: string;
   deviceName?: string; // アクティベーション時の PC 名（Environment.MachineName）
   appVersion?: string; // アプリのバージョン（例: "1.0.0"）、初回アクティベーション時に purchased_version 設定に使用
 }
@@ -35,7 +40,7 @@ serve(async (req) => {
       });
     }
 
-    const { licenseKey, hardwareId, deviceName, appVersion }: RequestBody = await req.json();
+    const { licenseKey, hardwareId, clientAppId, deviceName, appVersion }: RequestBody = await req.json();
 
     if (!licenseKey || !hardwareId) {
       return new Response(
@@ -52,17 +57,41 @@ serve(async (req) => {
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    // ライセンスキーを正規化（4桁区切り入力・表示形式対応）
-    const normalizedKey = normalizeLicenseKey(licenseKey) || licenseKey;
+    const lookupKeys = licenseDbLookupKeys(licenseKey);
 
-    // ライセンスを検索
-    const { data: license, error: licenseError } = await supabase
+    const { data: licenseRows, error: licenseLookupError } = await supabase
       .from("licenses")
       .select("*")
-      .eq("license_key", normalizedKey)
-      .single();
+      .in("license_key", lookupKeys)
+      .limit(10);
 
-    if (licenseError || !license) {
+    if (licenseLookupError) {
+      console.error("license lookup error:", licenseLookupError);
+      return new Response(JSON.stringify({ error: "Internal server error" }), {
+        status: 500,
+        headers: {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*",
+        },
+      });
+    }
+
+    const matchedRaw = licenseRows ?? [];
+    const byId = new Map<string, (typeof matchedRaw)[number]>();
+    for (const r of matchedRaw) {
+      const id = (r as { id?: string }).id;
+      if (!id) continue;
+      byId.set(String(id), r);
+    }
+    let matched = [...byId.values()];
+    if (matched.length > 1) {
+      console.warn(
+        `verify-license: multiple license rows for variants (count=${matched.length}), using first id=${(matched[0] as { id?: string }).id}`,
+      );
+      matched = [matched[0]];
+    }
+    if (matched.length !== 1) {
+      console.warn(`verify-license lookup: matched=${matched.length}, keys(${lookupKeys.length})`);
       return new Response(
         JSON.stringify({
           isValid: false,
@@ -77,6 +106,26 @@ serve(async (req) => {
         }
       );
     }
+
+    const license = matched[0];
+
+    const appGuard = assertLicenseBelongsToClientApp(license, clientAppId);
+    if (!appGuard.ok) {
+      return new Response(
+        JSON.stringify({
+          isValid: false,
+          errorMessage: appGuard.userMessage,
+        }),
+        {
+          status: 200,
+          headers: {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*",
+          },
+        }
+      );
+    }
+
     if (!license.is_active) {
       return new Response(
         JSON.stringify({
@@ -108,7 +157,7 @@ serve(async (req) => {
 
       if (!activation || !activation.is_active) {
         // デバイス数上限チェック（ZipSearch / PictComp も同じ上限を共有）
-        const DEVICE_LIMIT = 1;
+        const DEVICE_LIMIT = 3;
         const { count: activeCount } = await supabase
           .from("license_activations")
           .select("*", { count: "exact", head: true })
@@ -277,40 +326,6 @@ function getJwtRole(jwt: string): string | null {
   } catch {
     return null;
   }
-}
-
-/**
- * ライセンスキーを DB 照合形式に正規化（コンパクト区切り → 長い HMAC 形式など）
- */
-function normalizeLicenseKey(key: string): string | null {
-  if (!key || typeof key !== "string") return null;
-
-  const compact = normalizeCompactToStorage(key);
-  if (compact) return compact;
-
-  const trimmed = key.trim().toUpperCase();
-  const parts = trimmed.split("-");
-  if (parts.length < 3) return null;
-  const prefix = parts[0];
-  if (!prefix || !/^[A-Z0-9]+$/.test(prefix)) return null;
-
-  const formCode = parts[1];
-  if (formCode.length !== 4) return null;
-
-  if (parts.length >= 5) {
-    const serialPart = parts.slice(2, -1).join("");
-    const hmacPart = parts[parts.length - 1];
-    if (serialPart.length === 28 && /^[0-9A-F]+$/.test(serialPart) && /^[0-9A-F]+$/.test(hmacPart)) {
-      return `${prefix}-${formCode}-${serialPart}-${hmacPart}`;
-    }
-  }
-
-  const serialPartLegacy = parts.slice(2).join("");
-  if (serialPartLegacy.length === 28 && /^[0-9A-F]+$/.test(serialPartLegacy)) {
-    return `${prefix}-${formCode}-${serialPartLegacy}`;
-  }
-
-  return null;
 }
 
 /** コンパクト（記号32・区切り付き含む）または旧形式から purchased_version */

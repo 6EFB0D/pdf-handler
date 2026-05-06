@@ -3,6 +3,8 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "@supabase/supabase-js";
+import { assertLicenseBelongsToClientApp } from "../_shared/license-app-guard.ts";
+import { licenseDbLookupKeys } from "../_shared/license-db-lookup.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
@@ -12,6 +14,7 @@ interface RequestBody {
   hardwareId: string; // 呼び出し元のハードウェアID（認証用）
   activationId: string; // 更新するアクティベーションのID
   displayName: string; // 新しい表示名（空文字で display_name をクリア）
+  clientAppId: string;
 }
 
 const corsHeaders = {
@@ -27,7 +30,8 @@ serve(async (req) => {
   }
 
   try {
-    const { licenseKey, hardwareId, activationId, displayName }: RequestBody = await req.json();
+    const { licenseKey, hardwareId, activationId, displayName, clientAppId }: RequestBody =
+      await req.json();
 
     if (!licenseKey || !hardwareId || !activationId) {
       return new Response(
@@ -45,18 +49,37 @@ serve(async (req) => {
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    // ライセンスを検索
-    const { data: license, error: licenseError } = await supabase
+    const lookupKeys = licenseDbLookupKeys(licenseKey);
+    const { data: licenseRows, error: lookupErr } = await supabase
       .from("licenses")
-      .select("id")
-      .eq("license_key", licenseKey)
+      .select("id, app_id, license_key")
+      .in("license_key", lookupKeys)
       .eq("is_active", true)
-      .single();
+      .limit(5);
 
-    if (licenseError || !license) {
+    if (lookupErr) {
+      console.error("update-device-display-name license lookup:", lookupErr);
+      return new Response(
+        JSON.stringify({ error: "Internal server error" }),
+        { status: 500, headers: corsHeaders }
+      );
+    }
+
+    const lr = licenseRows ?? [];
+    if (lr.length !== 1) {
       return new Response(
         JSON.stringify({ error: "ライセンスが見つかりません" }),
         { status: 404, headers: corsHeaders }
+      );
+    }
+
+    const license = lr[0];
+
+    const appGuard = assertLicenseBelongsToClientApp(license, clientAppId);
+    if (!appGuard.ok) {
+      return new Response(
+        JSON.stringify({ error: appGuard.userMessage }),
+        { status: 403, headers: corsHeaders }
       );
     }
 

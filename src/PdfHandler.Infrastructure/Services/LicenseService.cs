@@ -210,7 +210,14 @@ public class LicenseService : ILicenseService, IDisposable
         {
             var deviceName = Environment.MachineName;
             var appVersion = GetCurrentAppVersion();
-            var request = new { licenseKey = keyToSend, hardwareId = _hardwareId, deviceName, appVersion };
+            var request = new
+            {
+                licenseKey = keyToSend,
+                hardwareId = _hardwareId,
+                clientAppId = PdfHandlerLicensing.ClientAppId,
+                deviceName,
+                appVersion
+            };
             var json = JsonSerializer.Serialize(request);
             var content = new StringContent(json, Encoding.UTF8, "application/json");
 
@@ -343,7 +350,7 @@ public class LicenseService : ILicenseService, IDisposable
 
         try
         {
-            var request = new { licenseKey, hardwareId = _hardwareId };
+            var request = new { licenseKey, hardwareId = _hardwareId, clientAppId = PdfHandlerLicensing.ClientAppId };
             var json = JsonSerializer.Serialize(request);
             var content = new StringContent(json, Encoding.UTF8, "application/json");
 
@@ -396,7 +403,7 @@ public class LicenseService : ILicenseService, IDisposable
 
         try
         {
-            var request = new { licenseKey, hardwareId = _hardwareId, activationId };
+            var request = new { licenseKey, hardwareId = _hardwareId, activationId, clientAppId = PdfHandlerLicensing.ClientAppId };
             var json = JsonSerializer.Serialize(request);
             var content = new StringContent(json, Encoding.UTF8, "application/json");
 
@@ -430,7 +437,14 @@ public class LicenseService : ILicenseService, IDisposable
 
         try
         {
-            var request = new { licenseKey, hardwareId = _hardwareId, activationId, displayName = displayName ?? "" };
+            var request = new
+            {
+                licenseKey,
+                hardwareId = _hardwareId,
+                activationId,
+                displayName = displayName ?? "",
+                clientAppId = PdfHandlerLicensing.ClientAppId
+            };
             var json = JsonSerializer.Serialize(request);
             var content = new StringContent(json, Encoding.UTF8, "application/json");
 
@@ -668,7 +682,14 @@ public class LicenseService : ILicenseService, IDisposable
             // 1. オンライン検証（5秒タイムアウト）
             var deviceName = Environment.MachineName;
             var appVersion = GetCurrentAppVersion();
-            var request = new { licenseKey = normalizedKey, hardwareId = _hardwareId, deviceName, appVersion };
+            var request = new
+            {
+                licenseKey = normalizedKey,
+                hardwareId = _hardwareId,
+                clientAppId = PdfHandlerLicensing.ClientAppId,
+                deviceName,
+                appVersion
+            };
             var json = JsonSerializer.Serialize(request);
             var content = new StringContent(json, Encoding.UTF8, "application/json");
 

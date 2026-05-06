@@ -6,7 +6,7 @@
 
 - `npx supabase functions deploy <名前> --project-ref <DEV または PROD> --no-verify-jwt`
 - 作業ディレクトリ例: `cd D:\Users\admin_mak\project\pdf-handler`
-- `admin-generate-license` / `verify-license` / `stripe-webhook` は **`_shared/compact-license-key.ts` を相対 import** している。CLI がバンドル時に同梱する（`supabase/functions` 側の-tree を使うこと）。
+- `admin-generate-license` / `verify-license` / `stripe-webhook` / `get-activations` / `deactivate-device` / `update-device-display-name` は **`_shared/compact-license-key.ts` または `_shared/license-app-guard.ts`** を相対 import している。CLI がバンドル時に同梱する（`supabase/functions` 側のツリーを使うこと）。
 
 ## このフォルダの役割
 
@@ -18,6 +18,7 @@
 | パス | 元 |
 |------|-----|
 | `_shared/compact-license-key.ts` | `supabase/functions/_shared/` |
+| `_shared/license-app-guard.ts` | `supabase/functions/_shared/` |
 | `verify-license/index.ts` | `supabase/functions/verify-license/` |
 | `stripe-webhook/index.ts` | `supabase/functions/stripe-webhook/` |
 

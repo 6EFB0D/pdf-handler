@@ -2,6 +2,7 @@
 // Copyright (c) 2024-2025 Goplan. All rights reserved.
 // Licensed under the MIT License. See LICENSE file in the project root for full license information.
 
+using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -32,6 +33,8 @@ public static class LicenseKeyHelper
     {
         if (string.IsNullOrWhiteSpace(key))
             return null;
+
+        key = SanitizePastedLicenseKey(key);
 
         var compact = NormalizeCompactToStorage(key);
         if (compact != null)
@@ -67,6 +70,8 @@ public static class LicenseKeyHelper
     {
         if (string.IsNullOrWhiteSpace(key))
             return null;
+
+        key = SanitizePastedLicenseKey(key);
 
         var trimmed = key.Trim().ToUpperInvariant();
         var parts = trimmed.Split('-');
@@ -167,8 +172,44 @@ public static class LicenseKeyHelper
         return plain == null ? null : FormatStorageFromPlain32(plain);
     }
 
+    private static string SanitizePastedLicenseKey(string key)
+    {
+        var s = key.Trim().Normalize(NormalizationForm.FormKC);
+        var sb = new StringBuilder(s.Length);
+        foreach (var c in s)
+        {
+            switch (c)
+            {
+                case '\u00a0':
+                case '\u202f':
+                    sb.Append(' ');
+                    break;
+                case '\ufeff':
+                case '\u200b':
+                case '\u200c':
+                case '\u200d':
+                case '\u2060':
+                    break;
+                case '\u2010':
+                case '\u2011':
+                case '\u2012':
+                case '\u2013':
+                case '\u2014':
+                case '\u2212':
+                case '\uff0d':
+                    sb.Append('-');
+                    break;
+                default:
+                    sb.Append(c);
+                    break;
+            }
+        }
+        return sb.ToString().Trim();
+    }
+
     private static string? ToCanonicalPlain32(string key)
     {
+        key = SanitizePastedLicenseKey(key);
         var sb = new StringBuilder();
         foreach (var c in key.Trim())
         {
