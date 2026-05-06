@@ -1,0 +1,125 @@
+<Window x:Class="PdfHandler.UI.Views.HeaderFooterDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="ヘッダ・フッター"
+        Width="480"
+        Height="600"
+        WindowStartupLocation="CenterOwner"
+        Background="#F5F5F5">
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- 対象ファイル -->
+        <StackPanel Grid.Row="0" Margin="0,0,0,15">
+            <TextBlock Text="対象ファイル:" FontWeight="Bold" Margin="0,0,0,5"/>
+            <TextBlock x:Name="TargetFileText" TextWrapping="Wrap"/>
+            <TextBlock x:Name="PageCountText" Margin="0,5,0,0" Foreground="Gray"/>
+        </StackPanel>
+
+        <!-- 設定 -->
+        <TextBlock Grid.Row="1" Text="設定:" FontWeight="Bold" Margin="0,0,0,10"/>
+
+        <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" Margin="0,0,0,15">
+            <StackPanel>
+                <!-- ヘッダー -->
+                <Border BorderBrush="#CCCCCC" BorderThickness="1" Background="White" Padding="15" Margin="0,0,0,15">
+                    <StackPanel>
+                        <CheckBox x:Name="ShowHeaderCheckBox" Content="ヘッダーに文書タイトルを表示" IsChecked="True" Margin="0,0,0,10"/>
+                        <StackPanel x:Name="HeaderPanel">
+                            <TextBlock Text="文書タイトル:" Margin="0,0,0,5"/>
+                            <TextBox x:Name="DocumentTitleTextBox" Padding="5" Margin="0,0,0,10"/>
+                            <TextBlock Text="配置:" Margin="0,0,0,5"/>
+                            <StackPanel Orientation="Horizontal">
+                                <RadioButton x:Name="HeaderLeftRadio" Content="左" GroupName="HeaderAlign" Margin="0,0,15,0"/>
+                                <RadioButton x:Name="HeaderCenterRadio" Content="中央" GroupName="HeaderAlign" IsChecked="True" Margin="0,0,15,0"/>
+                                <RadioButton x:Name="HeaderRightRadio" Content="右" GroupName="HeaderAlign" Margin="0,0,0,0"/>
+                            </StackPanel>
+                            <TextBlock Text="余白(pt):" Margin="0,10,0,5"/>
+                            <TextBox x:Name="HeaderMarginTextBox" Width="60" Padding="5" Text="12"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- フッター -->
+                <Border BorderBrush="#CCCCCC" BorderThickness="1" Background="White" Padding="15" Margin="0,0,0,15">
+                    <StackPanel>
+                        <CheckBox x:Name="ShowFooterCheckBox" Content="フッターにページ番号を表示" IsChecked="True" Margin="0,0,0,10"/>
+                        <StackPanel x:Name="FooterPanel">
+                            <TextBlock Text="ページ番号形式:" Margin="0,0,0,5"/>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                                <RadioButton x:Name="PageFormatSingleRadio" Content="1" GroupName="PageFormat" Margin="0,0,15,0"/>
+                                <RadioButton x:Name="PageFormatFractionRadio" Content="1/10" GroupName="PageFormat" IsChecked="True" Margin="0,0,15,0"/>
+                                <RadioButton x:Name="PageFormatHyphenRadio" Content="-1-" GroupName="PageFormat" Margin="0,0,0,0"/>
+                            </StackPanel>
+                            <TextBlock Text="配置:" Margin="0,0,0,5"/>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                                <RadioButton x:Name="FooterLeftRadio" Content="左" GroupName="FooterAlign" Margin="0,0,15,0"/>
+                                <RadioButton x:Name="FooterCenterRadio" Content="中央" GroupName="FooterAlign" IsChecked="True" Margin="0,0,15,0"/>
+                                <RadioButton x:Name="FooterRightRadio" Content="右" GroupName="FooterAlign" Margin="0,0,0,0"/>
+                            </StackPanel>
+                            <TextBlock Text="余白(pt):" Margin="0,0,0,5"/>
+                            <TextBox x:Name="FooterMarginTextBox" Width="60" Padding="5" Text="12"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- ヘッダー用フォント -->
+                <Border BorderBrush="#CCCCCC" BorderThickness="1" Background="White" Padding="15" Margin="0,0,0,15">
+                    <StackPanel>
+                        <TextBlock Text="ヘッダー用フォント:" FontWeight="Bold" Margin="0,0,0,10"/>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="80"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="フォント名:" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                            <ComboBox x:Name="HeaderFontFamilyComboBox" Grid.Column="1" Margin="0,0,15,0"
+                                      IsEditable="True"/>
+                            <TextBlock Grid.Column="2" Text="サイズ(pt):" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                            <TextBox x:Name="HeaderFontSizeTextBox" Grid.Column="3" Padding="5" Text="9"/>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <!-- フッター用フォント -->
+                <Border BorderBrush="#CCCCCC" BorderThickness="1" Background="White" Padding="15" Margin="0,0,0,15">
+                    <StackPanel>
+                        <TextBlock Text="フッター用フォント:" FontWeight="Bold" Margin="0,0,0,10"/>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="80"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="フォント名:" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                            <ComboBox x:Name="FooterFontFamilyComboBox" Grid.Column="1" Margin="0,0,15,0"
+                                      IsEditable="True"/>
+                            <TextBlock Grid.Column="2" Text="サイズ(pt):" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                            <TextBox x:Name="FooterFontSizeTextBox" Grid.Column="3" Padding="5" Text="9"/>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <!-- オプション -->
+                <StackPanel Margin="0,0,0,10">
+                    <CheckBox x:Name="AutoReapplyCheckBox" Content="ページ編集時に自動再適用する" IsChecked="True"/>
+                </StackPanel>
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- ボタン -->
+        <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0">
+            <Button x:Name="ApplyButton" Content="適用" Width="100" Height="35" Margin="0,0,10,0"
+                    IsDefault="True" Click="ApplyButton_Click" FontWeight="Bold"/>
+            <Button Content="キャンセル" Width="100" Height="35" IsCancel="True" Click="CancelButton_Click"/>
+        </StackPanel>
+    </Grid>
+</Window>

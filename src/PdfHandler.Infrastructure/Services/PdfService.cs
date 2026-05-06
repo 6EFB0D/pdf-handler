@@ -47,7 +47,7 @@ public class PdfService : IPdfService
     /// <summary>
     /// サムネイル画像を生成（第1ページ）
     /// </summary>
-    public async Task<byte[]> GenerateThumbnailAsync(string filePath, int width = 150, int height = 200)
+    public async Task<byte[]> GenerateThumbnailAsync(string filePath, int pageNumber = 1, int width = 150, int height = 200)
     {
         return await Task.Run(() =>
         {
@@ -64,7 +64,12 @@ public class PdfService : IPdfService
                 if (docReader.GetPageCount() == 0)
                     return CreatePlaceholderThumbnail(width, height);
 
-                using var pageReader = docReader.GetPageReader(0);
+                // ページ番号を0ベースに変換（1ベースから）
+                int pageIndex = pageNumber - 1;
+                if (pageIndex < 0 || pageIndex >= docReader.GetPageCount())
+                    pageIndex = 0; // 範囲外の場合は1ページ目を使用
+
+                using var pageReader = docReader.GetPageReader(pageIndex);
                 
                 // ページをレンダリング（96 DPI）
                 var rawBytes = pageReader.GetImage();

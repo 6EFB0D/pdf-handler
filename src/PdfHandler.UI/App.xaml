@@ -8,5 +8,8 @@
         <converters:InverseBoolToVisibilityConverter x:Key="InverseBoolToVisibilityConverter"/>
         <converters:InverseBoolConverter x:Key="InverseBoolConverter"/>
         <converters:ByteArrayToImageConverter x:Key="ByteArrayToImageConverter"/>
+        <converters:BoolToColorConverter x:Key="BoolToColorConverter"/>
+        <converters:PageCountToVisibilityConverter x:Key="PageCountToVisibilityConverter"/>
+        <converters:PreviewColumnWidthConverter x:Key="PreviewColumnWidthConverter"/>
     </Application.Resources>
 </Application>

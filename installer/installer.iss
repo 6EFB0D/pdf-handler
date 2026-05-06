@@ -31,6 +31,9 @@ SetupIconFile=PdfHandler.ico
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
+CloseApplications=force
+CloseApplicationsFilter=PdfHandler.UI.exe
+RestartApplications=no
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 PrivilegesRequired=lowest
@@ -53,3 +56,25 @@ Name: "{autodesktop}\PDFハンドラ"; Filename: "{app}\PdfHandler.UI.exe"; Work
 
 [Run]
 Filename: "{app}\PdfHandler.UI.exe"; Description: "PDFハンドラを起動する"; Flags: nowait postinstall skipifsilent
+
+[Code]
+procedure CurStepChanged(CurStep: TSetupStep);
+var
+  ResultCode: Integer;
+  OldExe: String;
+begin
+  if CurStep = ssInstall then
+  begin
+    // 1. プロセスを強制終了
+    Exec(ExpandConstant('{sys}\taskkill.exe'), '/F /IM PdfHandler.UI.exe', '',
+         SW_HIDE, ewWaitUntilTerminated, ResultCode);
+    Sleep(2000);
+
+    // 2. 旧 EXE を直接削除して MoveFile エラーを回避
+    OldExe := ExpandConstant('{app}\PdfHandler.UI.exe');
+    if FileExists(OldExe) then
+      DeleteFile(OldExe);
+
+    Sleep(500);
+  end;
+end;

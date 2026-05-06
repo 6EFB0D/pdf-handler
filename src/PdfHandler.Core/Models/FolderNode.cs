@@ -3,6 +3,7 @@
 // Licensed under the MIT License. See LICENSE file in the project root for full license information.
 
 using CommunityToolkit.Mvvm.ComponentModel;
+using System.Collections.ObjectModel;
 
 namespace PdfHandler.Core.Models;
 
@@ -29,7 +30,7 @@ public partial class FolderNode : ObservableObject
     /// <summary>
     /// 子フォルダノードのリスト
     /// </summary>
-    public List<FolderNode> Children { get; set; } = new();
+    public ObservableCollection<FolderNode> Children { get; set; } = new();
 
     /// <summary>
     /// 展開状態
@@ -42,4 +43,14 @@ public partial class FolderNode : ObservableObject
     /// </summary>
     [ObservableProperty]
     private bool _isSelected;
+
+    /// <summary>
+    /// 子フォルダが読み込まれているかどうか（遅延読み込み用）
+    /// </summary>
+    public bool IsChildrenLoaded { get; set; } = false;
+
+    /// <summary>
+    /// タグ（お気に入りなど識別用）
+    /// </summary>
+    public string? Tag { get; set; }
 }

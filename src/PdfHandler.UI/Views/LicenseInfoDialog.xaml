@@ -16,6 +16,83 @@
                            Margin="0,0,0,20"
                            Foreground="#333333"/>
                 
+                <!-- 現在のライセンス状態 -->
+                <Border BorderBrush="#CCCCCC" 
+                        BorderThickness="1" 
+                        Background="White"
+                        Padding="15" 
+                        Margin="0,0,0,20"
+                        CornerRadius="5">
+                    <StackPanel>
+                        <TextBlock x:Name="LicensePlanText" 
+                                   Text="読み込み中..." 
+                                   FontWeight="SemiBold" 
+                                   FontSize="16"
+                                   Foreground="#333333"
+                                   Margin="0,0,0,10"/>
+                        <TextBlock x:Name="LicenseStatusText" 
+                                   Text="" 
+                                   Foreground="#555555" 
+                                   Margin="0,0,0,5"
+                                   FontSize="13"/>
+                        <TextBlock x:Name="TrialDaysText" 
+                                   Text="" 
+                                   Foreground="#0066CC" 
+                                   Margin="0,0,0,5"
+                                   FontSize="13"
+                                   Visibility="Collapsed"/>
+                        <TextBlock x:Name="LastVerificationText" 
+                                   Text="" 
+                                   Foreground="#666666" 
+                                   Margin="0,0,0,5"
+                                   FontSize="12"
+                                   Visibility="Collapsed"/>
+                        <TextBlock x:Name="NextVerificationText" 
+                                   Text="" 
+                                   Foreground="#666666" 
+                                   Margin="0,0,0,0"
+                                   FontSize="12"
+                                   Visibility="Collapsed"/>
+                    </StackPanel>
+                </Border>
+                
+                <!-- ライセンス管理ボタン（有効なライセンスがある場合に表示） -->
+                <Button x:Name="LicenseManagerButton"
+                        Content="⚙ ライセンス管理"
+                        Click="LicenseManagerButton_Click"
+                        Padding="15,10"
+                        Margin="0,0,0,20"
+                        HorizontalAlignment="Left"
+                        Background="#6C757D"
+                        Foreground="White"
+                        BorderThickness="0"
+                        Cursor="Hand"
+                        Visibility="Collapsed">
+                    <Button.Style>
+                        <Style TargetType="Button">
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="Button">
+                                        <Border Background="{TemplateBinding Background}"
+                                                CornerRadius="5"
+                                                Padding="{TemplateBinding Padding}">
+                                            <ContentPresenter HorizontalAlignment="Center"
+                                                              VerticalAlignment="Center"/>
+                                        </Border>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                            <Style.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter Property="Background" Value="#5A6268"/>
+                                </Trigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                </Button>
+                
+                <Separator Margin="0,15,0,20" Background="#DDDDDD"/>
+                
                 <!-- PDFハンドラ -->
                 <TextBlock Text="PDFハンドラ" 
                            FontSize="18" 
@@ -142,6 +219,41 @@
                 </Button>
                 
                 <Separator Margin="0,10,0,20" Background="#DDDDDD"/>
+                
+                <!-- 購入ボタン（試用期間中またはライセンス無効の場合に表示） -->
+                <Button x:Name="PurchaseButton"
+                        Content="🛒 ライセンスを購入" 
+                        Click="PurchaseButton_Click" 
+                        Padding="20,10" 
+                        Margin="0,0,10,0"
+                        HorizontalAlignment="Right"
+                        Background="#28A745"
+                        Foreground="White"
+                        BorderThickness="0"
+                        Cursor="Hand"
+                        Visibility="Collapsed">
+                    <Button.Style>
+                        <Style TargetType="Button">
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="Button">
+                                        <Border Background="{TemplateBinding Background}"
+                                                CornerRadius="5"
+                                                Padding="{TemplateBinding Padding}">
+                                            <ContentPresenter HorizontalAlignment="Center" 
+                                                              VerticalAlignment="Center"/>
+                                        </Border>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                            <Style.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter Property="Background" Value="#218838"/>
+                                </Trigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                </Button>
                 
                 <!-- 閉じるボタン -->
                 <Button Content="閉じる" 

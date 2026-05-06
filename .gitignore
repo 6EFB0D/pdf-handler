@@ -419,3 +419,13 @@ FodyWeavers.xsd
 
 # Internal documentation (confidential)
 docs/internal/
+
+# Build output / installer output folders
+installer_output*/
+artifacts/
+
+# Local development secrets (DO NOT COMMIT)
+scripts/Secrets.local.ps1
+
+# Legacy/backup folders
+OLD/
