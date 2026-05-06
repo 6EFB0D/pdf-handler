@@ -20,9 +20,9 @@ public interface IPdfService
     Task<byte[]> RenderPageAsync(string filePath, int pageNumber, int dpi = 96);
 
     /// <summary>
-    /// PDFのサムネイルを生成（第1ページ）
+    /// PDFのサムネイルを生成（指定ページ）
     /// </summary>
-    Task<byte[]> GenerateThumbnailAsync(string filePath, int width = 150, int height = 200);
+    Task<byte[]> GenerateThumbnailAsync(string filePath, int pageNumber = 1, int width = 150, int height = 200);
 
     /// <summary>
     /// PDFファイルをメモリに読み込み（ファイルロック回避）

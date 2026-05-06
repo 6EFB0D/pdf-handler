@@ -1,0 +1,158 @@
+<Window x:Class="PdfHandler.UI.Views.LicenseInfoDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="ライセンス情報" 
+        Height="600" 
+        Width="650"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize"
+        Background="#F5F5F5">
+    <Grid Margin="30">
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+            <StackPanel>
+                <TextBlock Text="ライセンス情報" 
+                           FontSize="24" 
+                           FontWeight="Bold" 
+                           Margin="0,0,0,20"
+                           Foreground="#333333"/>
+                
+                <!-- PDFハンドラ -->
+                <TextBlock Text="PDFハンドラ" 
+                           FontSize="18" 
+                           FontWeight="SemiBold" 
+                           Margin="0,10,0,10"
+                           Foreground="#333333"/>
+                <TextBlock Text="本ソフトウェアは無料でご利用いただけます。" 
+                           TextWrapping="Wrap" 
+                           Margin="0,0,0,10"
+                           Foreground="#555555"/>
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,15">
+                    <Button Content="📄 利用規約を読む" 
+                            Click="TermsOfUse_Click" 
+                            Margin="0,0,10,0" 
+                            Padding="12,8"
+                            Background="White"
+                            BorderBrush="#CCCCCC"
+                            Cursor="Hand"/>
+                    <Button Content="🔒 プライバシーポリシーを読む" 
+                            Click="PrivacyPolicy_Click" 
+                            Padding="12,8"
+                            Background="White"
+                            BorderBrush="#CCCCCC"
+                            Cursor="Hand"/>
+                </StackPanel>
+                
+                <Separator Margin="0,15,0,20" Background="#DDDDDD"/>
+                
+                <!-- オープンソースライブラリ -->
+                <TextBlock Text="オープンソースライブラリ" 
+                           FontSize="18" 
+                           FontWeight="SemiBold" 
+                           Margin="0,0,0,10"
+                           Foreground="#333333"/>
+                <TextBlock Text="本ソフトウェアは以下のオープンソースライブラリを使用しています。" 
+                           TextWrapping="Wrap" 
+                           Margin="0,0,0,15"
+                           Foreground="#555555"/>
+                
+                <!-- PdfSharp -->
+                <Border BorderBrush="#CCCCCC" 
+                        BorderThickness="1" 
+                        Background="White"
+                        Padding="15" 
+                        Margin="0,0,0,15"
+                        CornerRadius="5">
+                    <StackPanel>
+                        <TextBlock Text="PdfSharp 6.1.1" 
+                                   FontWeight="SemiBold" 
+                                   FontSize="14"
+                                   Foreground="#333333"/>
+                        <TextBlock Text="MIT License" 
+                                   Foreground="#6C757D" 
+                                   Margin="0,3,0,8"
+                                   FontSize="12"/>
+                        <TextBlock Text="PDFファイルの読み書きに使用" 
+                                   TextWrapping="Wrap" 
+                                   Margin="0,0,0,10"
+                                   Foreground="#555555"/>
+                        <Button Content="ライセンス全文を表示" 
+                                Click="PdfSharpLicense_Click" 
+                                Padding="10,6" 
+                                HorizontalAlignment="Left"
+                                Background="White"
+                                BorderBrush="#CCCCCC"
+                                Cursor="Hand"/>
+                    </StackPanel>
+                </Border>
+                
+                <!-- CommunityToolkit.Mvvm -->
+                <Border BorderBrush="#CCCCCC" 
+                        BorderThickness="1" 
+                        Background="White"
+                        Padding="15" 
+                        Margin="0,0,0,15"
+                        CornerRadius="5">
+                    <StackPanel>
+                        <TextBlock Text="CommunityToolkit.Mvvm 8.2.2" 
+                                   FontWeight="SemiBold" 
+                                   FontSize="14"
+                                   Foreground="#333333"/>
+                        <TextBlock Text="MIT License" 
+                                   Foreground="#6C757D" 
+                                   Margin="0,3,0,8"
+                                   FontSize="12"/>
+                        <TextBlock Text="MVVMパターンの実装に使用" 
+                                   TextWrapping="Wrap" 
+                                   Margin="0,0,0,0"
+                                   Foreground="#555555"/>
+                    </StackPanel>
+                </Border>
+                
+                <!-- すべてのライセンス情報を表示 -->
+                <Button Content="📜 すべてのライセンス情報を表示" 
+                        Click="OpenSourceLicenses_Click"
+                        Padding="15,10"
+                        Margin="0,10,0,20"
+                        Background="#007BFF"
+                        Foreground="White"
+                        BorderThickness="0"
+                        HorizontalAlignment="Center"
+                        Cursor="Hand">
+                    <Button.Style>
+                        <Style TargetType="Button">
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="Button">
+                                        <Border Background="{TemplateBinding Background}"
+                                                CornerRadius="5"
+                                                Padding="{TemplateBinding Padding}">
+                                            <ContentPresenter HorizontalAlignment="Center" 
+                                                              VerticalAlignment="Center"/>
+                                        </Border>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                            <Style.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter Property="Background" Value="#0056B3"/>
+                                </Trigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                </Button>
+                
+                <Separator Margin="0,10,0,20" Background="#DDDDDD"/>
+                
+                <!-- 閉じるボタン -->
+                <Button Content="閉じる" 
+                        Click="CloseButton_Click" 
+                        Padding="20,10" 
+                        HorizontalAlignment="Right"
+                        Background="#6C757D"
+                        Foreground="White"
+                        BorderThickness="0"
+                        Cursor="Hand"/>
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</Window>

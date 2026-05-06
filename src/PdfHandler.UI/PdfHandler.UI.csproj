@@ -6,14 +6,15 @@
     <Nullable>enable</Nullable>
     <UseWPF>true</UseWPF>
     <UseWindowsForms>true</UseWindowsForms>
-    <Version>4.0.0</Version>
-    <FileVersion>4.0.0.0</FileVersion>
-    <AssemblyVersion>4.0.0.0</AssemblyVersion>
-    <Company>Goplan</Company>
+    <Version>1.1.1</Version>
+    <FileVersion>1.1.1.0</FileVersion>
+    <AssemblyVersion>1.1.1.0</AssemblyVersion>
+    <Company>Office Go Plan</Company>
     <Product>PDFハンドラ</Product>
-    <Copyright>Copyright © 2024-2025 Goplan</Copyright>
+    <Copyright>Copyright © 2024-2026 Office Go Plan</Copyright>
     <PackageIcon>PdfHandler.ico</PackageIcon>
     <PackageReadmeFile>README.md</PackageReadmeFile>
+    <ApplicationIcon>Assets\PdfHandler.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
@@ -30,6 +31,11 @@
     <None Update="USER_MANUAL.md">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- アプリアイコン -->
+    <Resource Include="Assets\PdfHandler.ico" />
   </ItemGroup>
 
   <ItemGroup>
@@ -57,3 +63,5 @@
   </ItemGroup>
 
 </Project>
+
+

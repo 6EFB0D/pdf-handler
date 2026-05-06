@@ -10,6 +10,9 @@
 *.userosscache
 *.sln.docstates
 *.env
+scripts/Secrets.local.ps1
+installer_output/
+supabase/.temp/
 
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
@@ -419,3 +422,8 @@ FodyWeavers.xsd
 
 # Internal documentation (confidential)
 docs/internal/
+
+# Version backup artifacts (large binaries - use Git LFS or store externally)
+backups/
+
+build_out/

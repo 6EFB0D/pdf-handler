@@ -3,15 +3,20 @@
 // Licensed under the MIT License. See LICENSE file in the project root for full license information.
 
 using PdfHandler.UI.ViewModels;
+using PdfHandler.Infrastructure.Configuration;
+using PdfHandler.Infrastructure.Helpers;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
 using PdfHandler.Core.Models;
 using System.Collections.ObjectModel;
+using PdfHandler.Core.Interfaces;
 
 namespace PdfHandler.UI.Views;
 
@@ -21,6 +26,17 @@ namespace PdfHandler.UI.Views;
 public partial class MainWindow : Window
 {
     private MainWindowViewModel? _viewModel;
+    private Point _thumbnailDragStart;
+    private bool _thumbnailDragStarted;
+    private string? _insertTargetPathForDrag; // ドラッグ開始時の挿入先（フォーカス移動を避けるため）
+    private Point _fileListDragStart;
+    private bool _fileListDragStarted;
+    private Point _thumbnailRightDragStart;
+    private bool _thumbnailRightDragStarted;
+    private Point _fileListRightDragStart;
+    private bool _fileListRightDragStarted;
+    private List<string> _pendingDropSourcePaths = new();
+    private string _pendingDropTargetPath = string.Empty;
 
     public MainWindow(MainWindowViewModel viewModel)
     {
@@ -30,16 +46,312 @@ public partial class MainWindow : Window
 
         // ViewModelのRootFolderプロパティ変更を監視
         _viewModel.PropertyChanged += ViewModel_PropertyChanged;
+        
+        // 初期状態を設定（既にRootFolderが設定されている場合）
+        // ただし、InitializeAsyncが非同期で実行されるため、少し遅延して確認
+        Dispatcher.BeginInvoke(new Action(() =>
+        {
+            if (_viewModel.RootFolder != null)
+            {
+                var items = new ObservableCollection<FolderNode> { _viewModel.RootFolder };
+                FolderTreeView.ItemsSource = items;
+            }
+
+            // プレビューの初期状態を反映
+            UpdatePreviewColumnWidth(_viewModel.IsPreviewVisible);
+        }), System.Windows.Threading.DispatcherPriority.Loaded);
+    }
+
+    private void MainWindow_Loaded(object sender, RoutedEventArgs e)
+    {
+    }
+
+    private void MainWindow_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
+    {
+        if (_viewModel != null)
+        {
+            _viewModel.PropertyChanged -= ViewModel_PropertyChanged;
+            _viewModel = null;
+        }
+    }
+    
+    private void UpdatePreviewColumnWidth(bool isVisible)
+    {
+        if (MainContentGrid?.ColumnDefinitions.Count >= 5)
+        {
+            var previewColumn = MainContentGrid.ColumnDefinitions[4];
+            var thumbnailColumn = MainContentGrid.ColumnDefinitions[2];
+            var splitterColumn = MainContentGrid.ColumnDefinitions[3];
+            
+            if (isVisible)
+            {
+                // プレビューを表示：プレビュー列を*に、サムネイル列を固定幅に
+                previewColumn.Width = new GridLength(1, GridUnitType.Star);
+                thumbnailColumn.Width = new GridLength(400);
+                splitterColumn.Width = new GridLength(5);
+            }
+            else
+            {
+                // プレビューを非表示：プレビュー列を0に、サムネイル列を*に
+                previewColumn.Width = new GridLength(0);
+                thumbnailColumn.Width = new GridLength(1, GridUnitType.Star);
+                splitterColumn.Width = new GridLength(0);
+            }
+        }
     }
 
     private void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(MainWindowViewModel.RootFolder) && _viewModel?.RootFolder != null)
+        if (e.PropertyName == nameof(MainWindowViewModel.RootFolder))
         {
-            // TreeViewのItemsSourceを手動で設定
-            var items = new ObservableCollection<FolderNode> { _viewModel.RootFolder };
-            FolderTreeView.ItemsSource = items;
+            // UIスレッドで実行
+            Dispatcher.Invoke(() =>
+            {
+                // TreeViewのItemsSourceを手動で設定
+                if (_viewModel?.RootFolder != null)
+                {
+                    var items = new ObservableCollection<FolderNode> { _viewModel.RootFolder };
+                    FolderTreeView.ItemsSource = items;
+                    
+                    // 選択されたフォルダをTreeViewで選択状態にする
+                    if (_viewModel.SelectedFolder != null)
+                    {
+                        SelectFolderInTreeView(_viewModel.SelectedFolder);
+                    }
+                }
+                else
+                {
+                    // RootFolderがnullの場合は空のコレクションを設定
+                    FolderTreeView.ItemsSource = new ObservableCollection<FolderNode>();
+                }
+            });
         }
+        else if (e.PropertyName == nameof(MainWindowViewModel.SelectedFolder) && _viewModel?.SelectedFolder != null)
+        {
+            // TreeViewで選択状態にする
+            Dispatcher.Invoke(() =>
+            {
+                SelectFolderInTreeView(_viewModel.SelectedFolder!);
+            });
+        }
+        else if (e.PropertyName == nameof(MainWindowViewModel.IsPreviewVisible))
+        {
+            // プレビューの表示/非表示に応じて列の幅を更新
+            Dispatcher.Invoke(() =>
+            {
+                UpdatePreviewColumnWidth(_viewModel?.IsPreviewVisible ?? true);
+            });
+        }
+    }
+    
+    private void SelectFolderInTreeView(FolderNode folder)
+    {
+        // TreeViewでフォルダを選択状態にする
+        // SelectedItemは読み取り専用なので、ViewModelのSelectedFolderプロパティを設定することで
+        // XAMLのバインディングで選択状態が反映される
+        if (FolderTreeView.ItemsSource is ObservableCollection<FolderNode> items && items.Count > 0)
+        {
+            var rootNode = items[0];
+            var targetNode = FindFolderNode(rootNode, folder.Path);
+            if (targetNode != null)
+            {
+                // 親ノードを展開
+                ExpandParentNodes(targetNode);
+                // ViewModelのSelectedFolderを設定（これによりTreeViewの選択状態も更新される）
+                if (_viewModel != null)
+                {
+                    _viewModel.SelectedFolder = targetNode;
+                }
+            }
+        }
+    }
+    
+    private FolderNode? FindFolderNode(FolderNode node, string targetPath)
+    {
+        if (node.Path.Equals(targetPath, StringComparison.OrdinalIgnoreCase))
+        {
+            return node;
+        }
+        
+        foreach (var child in node.Children)
+        {
+            var found = FindFolderNode(child, targetPath);
+            if (found != null)
+            {
+                return found;
+            }
+        }
+        
+        return null;
+    }
+    
+    private void ExpandParentNodes(FolderNode node)
+    {
+        // 親ノードを展開するために、ルートから該当ノードまでのパスを展開
+        if (FolderTreeView.ItemsSource is ObservableCollection<FolderNode> items && items.Count > 0)
+        {
+            var rootNode = items[0];
+            ExpandPathToNode(rootNode, node.Path);
+        }
+    }
+    
+    private bool ExpandPathToNode(FolderNode node, string targetPath)
+    {
+        if (node.Path.Equals(targetPath, StringComparison.OrdinalIgnoreCase))
+        {
+            node.IsExpanded = true;
+            return true;
+        }
+        
+        if (targetPath.StartsWith(node.Path, StringComparison.OrdinalIgnoreCase))
+        {
+            node.IsExpanded = true;
+            foreach (var child in node.Children)
+            {
+                if (ExpandPathToNode(child, targetPath))
+                {
+                    return true;
+                }
+            }
+        }
+        
+        return false;
+    }
+    
+    private void FileListItem_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is System.Windows.Controls.ListViewItem item && item.DataContext is PdfFileInfo)
+        {
+            _fileListDragStart = e.GetPosition(null);
+            _fileListDragStarted = true;
+        }
+    }
+
+    private void FileListItem_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        _fileListDragStarted = false;
+    }
+
+    private void FileListItem_PreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is System.Windows.Controls.ListViewItem item && item.DataContext is PdfFileInfo)
+        {
+            _fileListRightDragStart = e.GetPosition(null);
+            _fileListRightDragStarted = true;
+        }
+    }
+
+    private void FileListItem_PreviewMouseRightButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        _fileListRightDragStarted = false;
+    }
+
+    private void FileListItem_PreviewMouseMove(object sender, MouseEventArgs e)
+    {
+        if (sender is not System.Windows.Controls.ListViewItem item || item.DataContext is not PdfFileInfo fileInfo)
+            return;
+
+        var pos = e.GetPosition(null);
+
+        if (_fileListDragStarted && e.LeftButton == MouseButtonState.Pressed)
+        {
+            if (Math.Abs(pos.X - _fileListDragStart.X) < 5 && Math.Abs(pos.Y - _fileListDragStart.Y) < 5) return;
+            _fileListDragStarted = false;
+            var data = new DataObject("PdfFile", fileInfo.FilePath);
+            if (FileListView.SelectedItems.Count > 1 && FileListView.SelectedItems.Contains(fileInfo))
+            {
+                var paths = FileListView.SelectedItems.Cast<PdfFileInfo>().Select(x => x.FilePath).ToArray();
+                data.SetData("PdfFiles", paths);
+            }
+            DragDrop.DoDragDrop(item, data, DragDropEffects.Copy | DragDropEffects.Move);
+            return;
+        }
+
+        if (_fileListRightDragStarted && e.RightButton == MouseButtonState.Pressed)
+        {
+            if (Math.Abs(pos.X - _fileListRightDragStart.X) < 5 && Math.Abs(pos.Y - _fileListRightDragStart.Y) < 5) return;
+            _fileListRightDragStarted = false;
+            var data = new DataObject("PdfFile", fileInfo.FilePath);
+            data.SetData("ShowCopyMoveMenu", true);
+            if (FileListView.SelectedItems.Count > 1 && FileListView.SelectedItems.Contains(fileInfo))
+            {
+                var paths = FileListView.SelectedItems.Cast<PdfFileInfo>().Select(x => x.FilePath).ToArray();
+                data.SetData("PdfFiles", paths);
+            }
+            DragDrop.DoDragDrop(item, data, DragDropEffects.Copy | DragDropEffects.Move);
+        }
+    }
+
+    private void FolderTreeViewItem_DragOver(object sender, DragEventArgs e)
+    {
+        if (sender is not System.Windows.Controls.TreeViewItem item || item.DataContext is not FolderNode node)
+            return;
+        if (string.IsNullOrEmpty(node.Path) || !Directory.Exists(node.Path))
+            return;
+        if (e.Data.GetDataPresent("PdfFile") || e.Data.GetDataPresent("PdfFiles") || e.Data.GetDataPresent(DataFormats.FileDrop))
+        {
+            e.Effects = DragDropEffects.Copy;
+            e.Handled = true;
+        }
+    }
+
+    private void FolderTreeViewItem_Drop(object sender, DragEventArgs e)
+    {
+        if (sender is not System.Windows.Controls.TreeViewItem item || item.DataContext is not FolderNode node)
+            return;
+        if (string.IsNullOrEmpty(node.Path) || !Directory.Exists(node.Path))
+            return;
+
+        var sourcePaths = new List<string>();
+        if (e.Data.GetDataPresent("PdfFiles"))
+        {
+            var paths = e.Data.GetData("PdfFiles") as string[];
+            if (paths != null) sourcePaths.AddRange(paths);
+        }
+        else if (e.Data.GetDataPresent("PdfFile"))
+        {
+            var path = e.Data.GetData("PdfFile") as string;
+            if (!string.IsNullOrEmpty(path)) sourcePaths.Add(path);
+        }
+        else if (e.Data.GetDataPresent(DataFormats.FileDrop))
+        {
+            var files = (string[]?)e.Data.GetData(DataFormats.FileDrop);
+            if (files != null)
+            {
+                foreach (var f in files)
+                    if (File.Exists(f)) sourcePaths.Add(f);
+            }
+        }
+
+        if (sourcePaths.Count == 0 || _viewModel == null) { e.Handled = true; return; }
+
+        if (e.Data.GetDataPresent("ShowCopyMoveMenu"))
+        {
+            _pendingDropSourcePaths = new List<string>(sourcePaths);
+            _pendingDropTargetPath = node.Path;
+
+            var menu = new ContextMenu();
+            var copyItem = new MenuItem { Header = "ここにコピー" };
+            copyItem.Click += async (_, _) =>
+            {
+                if (_pendingDropSourcePaths.Count > 0) await _viewModel.CopyFilesToFolderAsync(_pendingDropSourcePaths, _pendingDropTargetPath);
+            };
+            var moveItem = new MenuItem { Header = "ここに移動" };
+            moveItem.Click += async (_, _) =>
+            {
+                if (_pendingDropSourcePaths.Count > 0) await _viewModel.MoveFilesToFolderAsync(_pendingDropSourcePaths, _pendingDropTargetPath);
+            };
+            menu.Items.Add(copyItem);
+            menu.Items.Add(moveItem);
+            menu.PlacementTarget = item;
+            menu.Placement = System.Windows.Controls.Primitives.PlacementMode.MousePoint;
+            menu.IsOpen = true;
+        }
+        else
+        {
+            _ = _viewModel.CopyFilesToFolderAsync(sourcePaths, node.Path);
+        }
+        e.Handled = true;
     }
 
     private void TreeView_SelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
@@ -50,9 +362,285 @@ public partial class MainWindow : Window
         }
     }
 
+    private async void TreeViewItem_Expanded(object sender, RoutedEventArgs e)
+    {
+        if (sender is System.Windows.Controls.TreeViewItem item && item.DataContext is FolderNode node)
+        {
+            // 遅延読み込み：展開時に子フォルダを読み込む
+            if (!node.IsChildrenLoaded && _viewModel != null)
+            {
+                await _viewModel.LoadChildrenAsync(node);
+            }
+        }
+    }
+
+    private FolderNode? _contextMenuFolderNode;
+
+    private async void FolderTreeView_ContextMenuOpening(object sender, ContextMenuEventArgs e)
+    {
+        if (sender is TreeView treeView && _viewModel != null)
+        {
+            // 右クリックされたアイテムを取得
+            var mousePosition = Mouse.GetPosition(treeView);
+            var hitTestResult = VisualTreeHelper.HitTest(treeView, mousePosition);
+            if (hitTestResult != null)
+            {
+                var item = FindParent<System.Windows.Controls.TreeViewItem>(hitTestResult.VisualHit);
+                if (item != null && item.DataContext is FolderNode clickedNode)
+                {
+                    // 選択状態にする（SelectedFolderプロパティを設定）
+                    _viewModel.SelectedFolder = clickedNode;
+                    _contextMenuFolderNode = clickedNode;
+                    item.IsSelected = true;
+
+                    // 遅延読み込み
+                    if (!clickedNode.IsChildrenLoaded)
+                    {
+                        await _viewModel.LoadChildrenAsync(clickedNode);
+                    }
+
+                    // お気に入りかどうかを確認してメニューを動的に設定
+                    if (treeView.ContextMenu is ContextMenu contextMenu)
+                    {
+                        var favorites = await _viewModel.GetFavoritesAsync();
+                        var isFavorite = favorites.Any(f => f.Path.Equals(clickedNode.Path, StringComparison.OrdinalIgnoreCase));
+                        var isEmptyPath = string.IsNullOrEmpty(clickedNode.Path);
+
+                        if (contextMenu.FindName("AddFavoriteMenuItem") is MenuItem addMenuItem)
+                        {
+                            addMenuItem.IsEnabled = !isEmptyPath && !isFavorite;
+                        }
+                        if (contextMenu.FindName("RemoveFavoriteMenuItem") is MenuItem removeMenuItem)
+                        {
+                            removeMenuItem.IsEnabled = !isEmptyPath && isFavorite;
+                        }
+                        if (contextMenu.FindName("RenameFavoriteMenuItem") is MenuItem renameMenuItem)
+                        {
+                            renameMenuItem.IsEnabled = !isEmptyPath && isFavorite;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private async void AddFavoriteMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        if (_viewModel != null && _contextMenuFolderNode != null)
+        {
+            await _viewModel.AddFavoriteAsync(_contextMenuFolderNode);
+        }
+    }
+
+    private async void RemoveFavoriteMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        if (_viewModel != null && _contextMenuFolderNode != null)
+        {
+            await _viewModel.RemoveFavoriteFromFolderAsync(_contextMenuFolderNode);
+        }
+    }
+
+    private async void RenameFavoriteMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        if (_viewModel != null && _contextMenuFolderNode != null)
+        {
+            await _viewModel.RenameFavoriteAsync(_contextMenuFolderNode);
+        }
+    }
+
+    private PdfFileInfo? _contextMenuPdfFile;
+
+    private async void RotateRightMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        if (_viewModel != null && _contextMenuPdfFile != null)
+        {
+            // サムネイルで表示しているページ番号を取得（リストビューの場合は1ページ目）
+            int pageNumber = _viewModel.IsThumbnailView ? _contextMenuPdfFile.DisplayPageNumber : 1;
+            await _viewModel.RotatePdfPageAsync(_contextMenuPdfFile, pageNumber, 90);
+        }
+    }
+
+    private async void RotateLeftMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        if (_viewModel != null && _contextMenuPdfFile != null)
+        {
+            // サムネイルで表示しているページ番号を取得（リストビューの場合は1ページ目）
+            int pageNumber = _viewModel.IsThumbnailView ? _contextMenuPdfFile.DisplayPageNumber : 1;
+            await _viewModel.RotatePdfPageAsync(_contextMenuPdfFile, pageNumber, 270);
+        }
+    }
+
+    private async void Rotate180MenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        if (_viewModel != null && _contextMenuPdfFile != null)
+        {
+            // サムネイルで表示しているページ番号を取得（リストビューの場合は1ページ目）
+            int pageNumber = _viewModel.IsThumbnailView ? _contextMenuPdfFile.DisplayPageNumber : 1;
+            await _viewModel.RotatePdfPageAsync(_contextMenuPdfFile, pageNumber, 180);
+        }
+    }
+
+    private async void ThumbnailPreviousPage_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button button && button.Tag is PdfFileInfo fileInfo && _viewModel != null)
+        {
+            if (fileInfo.DisplayPageNumber > 1)
+            {
+                fileInfo.DisplayPageNumber--;
+                // サムネイルを更新
+                await _viewModel.LoadThumbnailPageAsync(fileInfo, fileInfo.DisplayPageNumber);
+            }
+        }
+    }
+
+    private async void ThumbnailNextPage_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button button && button.Tag is PdfFileInfo fileInfo && _viewModel != null)
+        {
+            if (fileInfo.DisplayPageNumber < fileInfo.PageCount)
+            {
+                fileInfo.DisplayPageNumber++;
+                // サムネイルを更新
+                await _viewModel.LoadThumbnailPageAsync(fileInfo, fileInfo.DisplayPageNumber);
+            }
+        }
+    }
+
     private void Exit_Click(object sender, RoutedEventArgs e)
     {
         Application.Current.Shutdown();
+    }
+
+    private void Preview_DragOver(object sender, DragEventArgs e)
+    {
+        if (_viewModel?.CanUsePageEditFeature != true)
+        {
+            e.Effects = DragDropEffects.None;
+            e.Handled = true;
+            return;
+        }
+
+        if (e.Data.GetDataPresent(DataFormats.FileDrop))
+        {
+            if (_viewModel?.SelectedPdfFile == null) return;
+
+            var files = (string[]?)e.Data.GetData(DataFormats.FileDrop);
+            if (files != null && files.Any(f => f.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase)))
+            {
+                e.Effects = DragDropEffects.Copy;
+                e.Handled = true;
+                return;
+            }
+        }
+        if (e.Data.GetDataPresent("PdfFile") && e.Data.GetDataPresent("PdfInsertTarget"))
+        {
+            e.Effects = DragDropEffects.Copy;
+            e.Handled = true;
+        }
+    }
+
+    private void ThumbnailItem_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        _thumbnailDragStarted = false;
+    }
+
+    private void ThumbnailItem_MouseRightButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is FrameworkElement fe && fe.DataContext is PdfFileInfo)
+        {
+            _thumbnailRightDragStart = e.GetPosition(null);
+            _thumbnailRightDragStarted = true;
+        }
+    }
+
+    private void ThumbnailItem_MouseRightButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        _thumbnailRightDragStarted = false;
+    }
+
+    private void ThumbnailItem_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is FrameworkElement fe && fe.DataContext is PdfFileInfo fileInfo)
+        {
+            _insertTargetPathForDrag = null;
+            if ((Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control &&
+                _viewModel?.SelectedPdfFile != null &&
+                !string.Equals(_viewModel.SelectedPdfFile.FilePath, fileInfo.FilePath, StringComparison.OrdinalIgnoreCase))
+            {
+                // Ctrl+ドラッグ時は、クリックで選択が移る前の表示中PDFを挿入先として固定する。
+                _insertTargetPathForDrag = _viewModel.SelectedPdfFile.FilePath;
+            }
+
+            _thumbnailDragStart = e.GetPosition(null);
+            _thumbnailDragStarted = true;
+        }
+    }
+
+    private void ThumbnailItem_MouseMove(object sender, MouseEventArgs e)
+    {
+        if (sender is not FrameworkElement fe || fe.DataContext is not PdfFileInfo fileInfo) return;
+
+        var pos = e.GetPosition(null);
+        var isRightDrag = _thumbnailRightDragStarted && e.RightButton == MouseButtonState.Pressed;
+        var isLeftDrag = _thumbnailDragStarted && e.LeftButton == MouseButtonState.Pressed;
+
+        if (isLeftDrag)
+        {
+            if (Math.Abs(pos.X - _thumbnailDragStart.X) < 5 && Math.Abs(pos.Y - _thumbnailDragStart.Y) < 5) return;
+            _thumbnailDragStarted = false;
+            var data = new DataObject("PdfFile", fileInfo.FilePath);
+            if (!string.IsNullOrEmpty(_insertTargetPathForDrag))
+                data.SetData("PdfInsertTarget", _insertTargetPathForDrag);
+            if (_viewModel != null && ThumbnailListView.SelectedItems.Count > 1 && ThumbnailListView.SelectedItems.Contains(fileInfo))
+            {
+                var paths = ThumbnailListView.SelectedItems.Cast<PdfFileInfo>().Select(x => x.FilePath).ToArray();
+                data.SetData("PdfFiles", paths);
+            }
+            DragDrop.DoDragDrop(fe, data, DragDropEffects.Copy | DragDropEffects.Move);
+            _insertTargetPathForDrag = null;
+            return;
+        }
+
+        if (isRightDrag)
+        {
+            if (Math.Abs(pos.X - _thumbnailRightDragStart.X) < 5 && Math.Abs(pos.Y - _thumbnailRightDragStart.Y) < 5) return;
+            _thumbnailRightDragStarted = false;
+            var data = new DataObject("PdfFile", fileInfo.FilePath);
+            data.SetData("ShowCopyMoveMenu", true);
+            if (_viewModel != null && ThumbnailListView.SelectedItems.Count > 1 && ThumbnailListView.SelectedItems.Contains(fileInfo))
+            {
+                var paths = ThumbnailListView.SelectedItems.Cast<PdfFileInfo>().Select(x => x.FilePath).ToArray();
+                data.SetData("PdfFiles", paths);
+            }
+            DragDrop.DoDragDrop(fe, data, DragDropEffects.Copy | DragDropEffects.Move);
+        }
+    }
+
+    private async void Preview_Drop(object sender, DragEventArgs e)
+    {
+        string? targetPath = null; // 挿入先PDF（サムネイルドラッグ時はドラッグデータから取得）
+        if (e.Data.GetDataPresent(DataFormats.FileDrop) && _viewModel?.SelectedPdfFile != null)
+            targetPath = _viewModel.SelectedPdfFile.FilePath;
+        else if (e.Data.GetDataPresent("PdfInsertTarget"))
+            targetPath = e.Data.GetData("PdfInsertTarget") as string;
+
+        if (string.IsNullOrEmpty(targetPath)) return;
+
+        string? pdfPath = null;
+        if (e.Data.GetDataPresent(DataFormats.FileDrop))
+        {
+            var files = (string[]?)e.Data.GetData(DataFormats.FileDrop);
+            pdfPath = files?.FirstOrDefault(f => f.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase));
+        }
+        else if (e.Data.GetDataPresent("PdfFile"))
+        {
+            pdfPath = e.Data.GetData("PdfFile") as string;
+        }
+        if (!string.IsNullOrEmpty(pdfPath) && File.Exists(pdfPath))
+        {
+            await _viewModel!.InsertPdfAtCurrentPageAsync(pdfPath, targetPath);
+        }
+        e.Handled = true;
     }
 
     private void About_Click(object sender, RoutedEventArgs e)
@@ -63,11 +651,96 @@ public partial class MainWindow : Window
         aboutDialog.ShowDialog();
     }
 
-    // インライン編集機能
+    private void License_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new LicenseDialog { Owner = this };
+        dialog.ShowDialog();
+        _viewModel?.UpdateTrialStatus();
+    }
+
+    private void ProductPage_Click(object sender, RoutedEventArgs e)
+    {
+        OpenUrlInBrowser("ProductPageUrl", "PDF Handlerのページ");
+    }
+
+    private void Contact_Click(object sender, RoutedEventArgs e)
+    {
+        OpenUrlInBrowser("ContactUrl", "お問い合わせ");
+    }
+
+    private void SurveyForm_Click(object sender, RoutedEventArgs e)
+    {
+        OpenUrlInBrowser("SurveyFormUrl", "アンケート・要望フォーム");
+    }
+
+    private void OpenUrlInBrowser(string settingKey, string displayName)
+    {
+        var app = (App)Application.Current;
+        var settings = app.GetService<AppSettings>();
+        string? url = settingKey switch
+        {
+            "ProductPageUrl" => settings.ProductPageUrl?.Trim(),
+            "ContactUrl" => settings.ContactUrl?.Trim(),
+            "SurveyFormUrl" => settings.SurveyFormUrl?.Trim(),
+            _ => null
+        };
+        if (string.IsNullOrEmpty(url))
+        {
+            MessageBox.Show($"{displayName}のURLが設定されていません。", "情報", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+        try
+        {
+            Process.Start(new ProcessStartInfo { FileName = url, UseShellExecute = true });
+        }
+        catch (Exception ex)
+        {
+            DebugLogger.LogError(ErrorCodes.UrlOpenFailed, $"URLオープン失敗: {url}", ex);
+            MessageBox.Show(ErrorCodes.UserMessage(ErrorCodes.UrlOpenFailed, "URLを開けませんでした。"), "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    // インライン編集機能・ショートカット
     private void FileListView_KeyDown(object sender, KeyEventArgs e)
     {
+        if (e.Key == Key.A && (Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control)
+        {
+            SelectAllVisiblePdfFiles();
+            e.Handled = true;
+            return;
+        }
+        if (e.Key == Key.C && (Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control)
+        {
+            CopyFiles_Click(sender, e);
+            e.Handled = true;
+            return;
+        }
+        if (e.Key == Key.V && (Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control)
+        {
+            PasteFiles_Click(sender, e);
+            e.Handled = true;
+            return;
+        }
         if (e.Key == Key.F2 && _viewModel?.SelectedPdfFile != null)
         {
+            // ライセンスチェック
+            var app = (App)Application.Current;
+            var licenseService = app.GetService<ILicenseService>();
+            if (!licenseService.CanUseRename())
+            {
+                MessageBox.Show(
+                    "ファイル名変更機能は有償版の機能です。\n\n14日間の試用期間中は全機能をご利用いただけます。\n試用期間が終了した場合は、ライセンスの購入が必要です。",
+                    "機能制限",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+                
+                // ライセンスダイアログを表示
+                var licenseDialog = new LicenseDialog { Owner = this };
+                licenseDialog.ShowDialog();
+                e.Handled = true;
+                return;
+            }
+            
             StartInlineEdit(_viewModel.SelectedPdfFile);
             e.Handled = true;
         }
@@ -78,10 +751,58 @@ public partial class MainWindow : Window
         }
     }
 
+    private void MainWindow_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.OriginalSource is TextBox)
+            return;
+
+        if (e.Key == Key.A && (Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control)
+        {
+            SelectAllVisiblePdfFiles();
+            e.Handled = true;
+        }
+    }
+
+    private void SelectAllFiles_Click(object sender, RoutedEventArgs e)
+    {
+        SelectAllVisiblePdfFiles();
+    }
+
+    private void SelectAllVisiblePdfFiles()
+    {
+        if (_viewModel == null || _viewModel.PdfFiles.Count == 0)
+            return;
+
+        var listView = _viewModel.IsThumbnailView ? ThumbnailListView : FileListView;
+        listView.SelectAll();
+        listView.Focus();
+
+        if (listView.SelectedItem is PdfFileInfo selectedFile)
+            _viewModel.SelectedPdfFile = selectedFile;
+    }
+
     private void FileName_DoubleClick(object sender, MouseButtonEventArgs e)
     {
         if (e.ClickCount == 2 && sender is TextBlock textBlock && textBlock.DataContext is PdfFileInfo file)
         {
+            // ライセンスチェック
+            var app = (App)Application.Current;
+            var licenseService = app.GetService<ILicenseService>();
+            if (!licenseService.CanUseRename())
+            {
+                MessageBox.Show(
+                    "ファイル名変更機能は有償版の機能です。\n\n14日間の試用期間中は全機能をご利用いただけます。\n試用期間が終了した場合は、ライセンスの購入が必要です。",
+                    "機能制限",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+                
+                // ライセンスダイアログを表示
+                var licenseDialog = new LicenseDialog { Owner = this };
+                licenseDialog.ShowDialog();
+                e.Handled = true;
+                return;
+            }
+            
             StartInlineEdit(file);
             e.Handled = true;
         }
@@ -89,6 +810,14 @@ public partial class MainWindow : Window
 
     private void StartInlineEdit(PdfFileInfo file)
     {
+        // ライセンスチェック（念のため）
+        var app = (App)Application.Current;
+        var licenseService = app.GetService<ILicenseService>();
+        if (!licenseService.CanUseRename())
+        {
+            return;
+        }
+        
         file.EditingName = Path.GetFileNameWithoutExtension(file.FileName);
         file.IsEditing = true;
     }
@@ -216,7 +945,8 @@ public partial class MainWindow : Window
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"ファイルを開けませんでした: {ex.Message}", "エラー",
+                DebugLogger.LogError(ErrorCodes.FileOpenFailed, "外部アプリでのファイルオープン失敗", ex);
+                MessageBox.Show(ErrorCodes.UserMessage(ErrorCodes.FileOpenFailed, "ファイルを開けませんでした。"), "エラー",
                     MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
@@ -251,7 +981,7 @@ public partial class MainWindow : Window
             else
             {
                 MessageBox.Show(
-                    "取扱説明書が見つかりません。\n\nGitHubリポジトリのUSER_MANUAL.mdを参照してください。",
+                    "取扱説明書が見つかりません。\n\nアプリを再インストールするか、サポートにお問い合わせください。",
                     "情報",
                     MessageBoxButton.OK,
                     MessageBoxImage.Information);
@@ -259,8 +989,31 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"取扱説明書を開けませんでした: {ex.Message}", "エラー",
+            DebugLogger.LogError(ErrorCodes.DocumentOpenFailed, "取扱説明書オープン失敗", ex);
+            MessageBox.Show(ErrorCodes.UserMessage(ErrorCodes.DocumentOpenFailed, "取扱説明書を開けませんでした。"), "エラー",
                 MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private async void HeaderFooter_Click(object sender, RoutedEventArgs e)
+    {
+        if (_viewModel?.SelectedPdfFile == null)
+        {
+            MessageBox.Show("PDFファイルを選択してください。", "操作ヒント",
+                MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        var file = _viewModel.SelectedPdfFile;
+        var dialog = new HeaderFooterDialog(file.FilePath, file.PageCount)
+        {
+            Owner = this
+        };
+        if (dialog.ShowDialog() == true && dialog.AppliedSettings != null)
+        {
+            _viewModel.SetHeaderFooterSettingsForAutoReapply(dialog.AppliedSettings, file.FilePath);
+            _viewModel.StatusText = "ヘッダ・フッターを適用しました";
+            await _viewModel.RefreshAndLoadPageAfterHeaderFooterAsync(file.FilePath, _viewModel.CurrentPageNumber);
         }
     }
 
@@ -301,9 +1054,31 @@ public partial class MainWindow : Window
         }
         else
         {
-            MessageBox.Show("結合するPDFファイルを選択してください。\n\n複数選択: Ctrlキーを押しながらクリック", "情報",
+            MessageBox.Show("結合するPDFファイルを選択してください。\n\n複数選択: Shift/Ctrl+クリック、または Ctrl+A", "情報",
                 MessageBoxButton.OK, MessageBoxImage.Information);
         }
+    }
+
+    // コピー（複数選択対応）
+    private void CopyFiles_Click(object sender, RoutedEventArgs e)
+    {
+        if (_viewModel == null) return;
+        var selected = new List<PdfFileInfo>();
+        if (_viewModel.IsThumbnailView && ThumbnailListView.SelectedItems.Count > 0)
+        {
+            foreach (PdfFileInfo item in ThumbnailListView.SelectedItems) selected.Add(item);
+        }
+        else if (!_viewModel.IsThumbnailView && FileListView.SelectedItems.Count > 0)
+        {
+            foreach (PdfFileInfo item in FileListView.SelectedItems) selected.Add(item);
+        }
+        if (selected.Count > 0) _viewModel.CopyFiles(selected);
+    }
+
+    // ペースト
+    private async void PasteFiles_Click(object sender, RoutedEventArgs e)
+    {
+        if (_viewModel != null) await _viewModel.PasteFilesCommand.ExecuteAsync(null);
     }
 
     // ファイル削除（複数選択対応）
@@ -351,5 +1126,60 @@ public partial class MainWindow : Window
 
         // ファイルを削除
         await _viewModel.DeleteFilesAsync(selectedFiles);
+    }
+
+    private void OpenBinderManager_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new BinderManagerDialog();
+        dialog.Owner = this;
+        dialog.ShowDialog();
+    }
+
+    private void PrintDriverSettings_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new PrintDriverSettingsDialog();
+        dialog.Owner = this;
+        dialog.ShowDialog();
+    }
+
+    private void FileListView_ContextMenuOpening(object sender, ContextMenuEventArgs e)
+    {
+        // 右クリックメニューが開かれた時に、選択されたファイルを更新
+        if (sender is ListView listView)
+        {
+            // 現在選択されているアイテムがあれば、それをViewModelに設定
+            if (listView.SelectedItem is PdfFileInfo selectedFile && _viewModel != null)
+            {
+                _viewModel.SelectedPdfFile = selectedFile;
+                _contextMenuPdfFile = selectedFile;
+            }
+            // 選択されていない場合は、マウス位置のアイテムを取得
+            else
+            {
+                var mousePosition = Mouse.GetPosition(listView);
+                var hitTestResult = VisualTreeHelper.HitTest(listView, mousePosition);
+                if (hitTestResult != null)
+                {
+                    var item = FindParent<ListViewItem>(hitTestResult.VisualHit);
+                    if (item != null && item.DataContext is PdfFileInfo clickedFile)
+                    {
+                        listView.SelectedItem = clickedFile;
+                        if (_viewModel != null)
+                        {
+                            _viewModel.SelectedPdfFile = clickedFile;
+                            _contextMenuPdfFile = clickedFile;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private static T? FindParent<T>(DependencyObject child) where T : DependencyObject
+    {
+        var parentObject = VisualTreeHelper.GetParent(child);
+        if (parentObject == null) return null;
+        if (parentObject is T parent) return parent;
+        return FindParent<T>(parentObject);
     }
 }

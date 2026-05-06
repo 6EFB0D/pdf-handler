@@ -25,6 +25,8 @@ public partial class AddFavoriteDialog : Window
         NameTextBox.SelectAll();
     }
 
+    public System.Windows.Controls.TextBox NameTextBoxControl => NameTextBox;
+
     private void AddButton_Click(object sender, RoutedEventArgs e)
     {
         var name = NameTextBox.Text.Trim();

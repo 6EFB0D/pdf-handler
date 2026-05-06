@@ -6,6 +6,8 @@ using System;
 using System.IO;
 using System.Windows;
 using System.Diagnostics;
+using PdfHandler.Core.Interfaces;
+using PdfHandler.Core.Models;
 
 namespace PdfHandler.UI.Views
 {
@@ -14,9 +16,81 @@ namespace PdfHandler.UI.Views
     /// </summary>
     public partial class LicenseInfoDialog : Window
     {
+        private readonly ILicenseService _licenseService;
+
         public LicenseInfoDialog()
         {
             InitializeComponent();
+            
+            // DIコンテナから取得
+            var app = (App)Application.Current;
+            _licenseService = app.GetService<ILicenseService>();
+            
+            // ライセンス情報を表示
+            LoadLicenseInfo();
+        }
+
+        private void LoadLicenseInfo()
+        {
+            try
+            {
+                var licenseInfo = _licenseService.GetLicenseInfo();
+                
+                // プラン情報を表示
+                LicensePlanText.Text = licenseInfo.Plan switch
+                {
+                    LicensePlan.Trial => "試用期間中",
+                    LicensePlan.StandardPurchased => "Standard版（買い切り）",
+                    _ => "Standard版（買い切り）",
+                };
+                
+                // ライセンス状態を表示
+                if (_licenseService.IsTrialValid())
+                {
+                    var remainingDays = _licenseService.GetRemainingTrialDays();
+                    LicenseStatusText.Text = $"試用期間: 残り{remainingDays}日";
+                    TrialDaysText.Text = $"試用期間終了日: {licenseInfo.FirstLaunchDate.AddDays(14):yyyy年MM月dd日}";
+                    TrialDaysText.Visibility = Visibility.Visible;
+                    // 試用期間中は購入ボタンを表示
+                    PurchaseButton.Visibility = Visibility.Visible;
+                    LicenseManagerButton.Visibility = Visibility.Collapsed;
+                }
+                else if (_licenseService.IsLicenseValid())
+                {
+                    LicenseStatusText.Text = "ライセンス有効";
+                    
+                    if (licenseInfo.LastVerificationDate.HasValue)
+                    {
+                        LastVerificationText.Text = $"最終検証日時: {licenseInfo.LastVerificationDate.Value:yyyy年MM月dd日 HH:mm}";
+                        LastVerificationText.Visibility = Visibility.Visible;
+                    }
+                    
+                    if (licenseInfo.NextVerificationDate.HasValue)
+                    {
+                        NextVerificationText.Text = $"次回検証日時: {licenseInfo.NextVerificationDate.Value:yyyy年MM月dd日 HH:mm}";
+                        NextVerificationText.Visibility = Visibility.Visible;
+                    }
+                    // 有効なライセンスがある場合は購入ボタンを非表示、ライセンス管理を表示
+                    PurchaseButton.Visibility = Visibility.Collapsed;
+                    LicenseManagerButton.Visibility = Visibility.Visible;
+                }
+                else
+                {
+                    LicenseStatusText.Text = "ライセンス無効";
+                    LicenseStatusText.Foreground = System.Windows.Media.Brushes.Red;
+                    // ライセンス無効の場合は購入ボタンを表示
+                    PurchaseButton.Visibility = Visibility.Visible;
+                    LicenseManagerButton.Visibility = Visibility.Collapsed;
+                }
+            }
+            catch (Exception ex)
+            {
+                LicensePlanText.Text = "エラー";
+                LicenseStatusText.Text = $"ライセンス情報の読み込みに失敗しました: {ex.Message}";
+                LicenseStatusText.Foreground = System.Windows.Media.Brushes.Red;
+                PurchaseButton.Visibility = Visibility.Collapsed;
+                LicenseManagerButton.Visibility = Visibility.Collapsed;
+            }
         }
 
         /// <summary>
@@ -53,6 +127,33 @@ namespace PdfHandler.UI.Views
         {
             ShowLegalDocument("OPEN_SOURCE_LICENSES.txt", "オープンソースライセンス",
                 "https://github.com/empira/PDFsharp/blob/master/LICENSE");
+        }
+
+        /// <summary>
+        /// ライセンス管理ボタンクリック
+        /// </summary>
+        private void LicenseManagerButton_Click(object sender, RoutedEventArgs e)
+        {
+            var dialog = new LicenseManagerDialog
+            {
+                Owner = this
+            };
+            dialog.ShowDialog();
+            // このPCを解除した場合はライセンス状態が変わるため再読み込み
+            LoadLicenseInfo();
+        }
+
+        /// <summary>
+        /// 購入ボタンクリック
+        /// </summary>
+        private void PurchaseButton_Click(object sender, RoutedEventArgs e)
+        {
+            var licenseDialog = new LicenseDialog();
+            licenseDialog.Owner = this;
+            licenseDialog.ShowDialog();
+            
+            // ダイアログを閉じた後にライセンス情報を再読み込み
+            LoadLicenseInfo();
         }
 
         /// <summary>
