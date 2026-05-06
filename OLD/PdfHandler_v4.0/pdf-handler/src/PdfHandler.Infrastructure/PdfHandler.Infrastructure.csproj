@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <SupportedOSPlatformVersion>6.1</SupportedOSPlatformVersion>
+    <NoWarn>$(NoWarn);CA1416</NoWarn>
+    <Version>4.0.0</Version>
+    <FileVersion>4.0.0.0</FileVersion>
+    <AssemblyVersion>4.0.0.0</AssemblyVersion>
+    <Company>Goplan</Company>
+    <Product>PDFハンドラ</Product>
+    <Copyright>Copyright © 2024-2025 Goplan</Copyright>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\PdfHandler.Core\PdfHandler.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- ❌ iText7を削除（AGPL v3.0ライセンス） -->
+    <!-- <PackageReference Include="itext7" Version="7.2.5" /> -->
+    
+    <!-- ✅ PdfSharp 6.x に更新（MIT License - 完全無償・商用利用可能） -->
+    <PackageReference Include="PdfSharp" Version="6.1.1" />
+    
+    <!-- 既存のパッケージ（保持） -->
+    <PackageReference Include="System.Drawing.Common" Version="8.0.0" />
+    <PackageReference Include="Docnet.Core" Version="2.6.0" />
+  </ItemGroup>
+
+</Project>

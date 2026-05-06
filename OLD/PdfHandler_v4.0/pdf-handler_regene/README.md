@@ -1,10 +1,5 @@
 # PDFハンドラ デスクトップアプリケーション
 
-[![GitHub release](https://img.shields.io/github/v/release/6EFB0D/pdf-handler?style=flat-square)](https://github.com/6EFB0D/pdf-handler/releases/latest)
-[![GitHub all releases](https://img.shields.io/github/downloads/6EFB0D/pdf-handler/total?style=flat-square&label=total%20downloads)](https://github.com/6EFB0D/pdf-handler/releases)
-[![GitHub release downloads](https://img.shields.io/github/downloads/6EFB0D/pdf-handler/latest/total?style=flat-square&label=latest%20downloads)](https://github.com/6EFB0D/pdf-handler/releases/latest)
-[![License](https://img.shields.io/github/license/6EFB0D/pdf-handler?style=flat-square)](LICENSE)
-
 ファイルサーバ上のPDFファイルを効率的に管理・編集するためのWPFデスクトップアプリケーション
 
 ## プロジェクト構成
@@ -33,12 +28,12 @@ pdf-handler/
 - **アーキテクチャ**: MVVM (Model-View-ViewModel)
 - **DIコンテナ**: Microsoft.Extensions.DependencyInjection
 - **MVVMツールキット**: CommunityToolkit.Mvvm
-- **PDFライブラリ**:
-  - **PdfSharp 6.1.1** (PDF操作・結合・分割) - MIT License
-  - **Docnet.Core 2.6.0** (PDF表示・サムネイル生成) - MIT License
+- **PDFライブラリ**: 
+  - **iText 7.2.5** (PDF操作・結合・分割) ⚠️ **重要: 8.x系は使用不可**
+  - Docnet.Core 2.6.0 (PDF表示・サムネイル生成)
   - System.Drawing.Common (画像処理)
 
-すべてMITライセンスのライブラリを使用しており、**完全無償・商用利用可能**です。
+**注意:** iText 8.x系はSmartModeが強制的に有効化されるため使用できません。必ず7.2.x系を使用してください。
 
 ## 主要機能
 
@@ -58,33 +53,11 @@ pdf-handler/
 - 1ページずつ分割
 - 等分割
 
-## インストール方法
-
-### 一般ユーザー向け
-
-**実行可能ファイル（.exe）をダウンロードして使用する場合**
-
-1. **最新リリースをダウンロード**
-   - [Releases ページ](https://github.com/6EFB0D/pdf-handler/releases/latest)にアクセス
-   - 最新バージョンの「Assets」セクションから `PdfHandler-v4.0.0-win-x64.exe` をダウンロード
-
-2. **アプリケーションを起動**
-   - ダウンロードした `PdfHandler-v4.0.0-win-x64.exe` をダブルクリックして起動
-   - インストール不要で即座に使用可能です
-
-3. **システム要件**
-   - Windows 10 / 11 (64bit)
-   - .NET 8.0 Runtime（アプリに同梱されているため別途インストール不要）
-
-### 開発者向け
-
-ソースコードからビルドする場合は、以下の「ビルド方法」セクションを参照してください。
-
 ## ビルド方法
 
 ### 前提条件
 - Visual Studio 2022以上
-- .NET 8.0 SDK以上
+- .NET 6.0 SDK以上
 
 ### ビルド手順
 
@@ -151,59 +124,42 @@ dotnet run
 
 ## 開発状況
 
-### 実装済み機能（v1.0.0）
-- ✅ プロジェクト構造の確立（3層アーキテクチャ）
+### 実装済み機能
+- ✅ プロジェクト構造の確立
 - ✅ 基本UI (3ペイン構成)
 - ✅ フォルダツリー表示
 - ✅ サムネイル/リスト表示切替
 - ✅ プレビューON/OFF切替
 - ✅ DIコンテナによる依存性注入
 - ✅ MVVMパターンの実装
-- ✅ PdfSharpによるPDF結合機能
-- ✅ PdfSharpによるPDF分割機能
-- ✅ Docnet.CoreによるPDFレンダリング（実際のPDF表示）
-- ✅ サムネイル生成（第1ページ）
-- ✅ ファイル名変更（F2キー、インライン編集）
-- ✅ ファイルロック回避（メモリストリーム方式）
-- ✅ お気に入りフォルダ管理
-- ✅ PDF結合・分割ダイアログUI
+- ✅ iText7によるPDFページ数取得
+- ✅ iText7によるPDF結合機能
+- ✅ iText7によるPDF分割機能
+- ✅ サムネイル生成（プレースホルダー）
 
 ### 実装予定機能
-- 🔲 ページ抽出・回転・削除機能
-- 🔲 注釈機能（ハイライト、テキストボックス、手書き）
+- 🔲 実際のPDFレンダリング（SkiaSharp等の統合）
+- 🔲 ファイル名変更ダイアログ
+- 🔲 PDF結合ダイアログUI
+- 🔲 PDF分割ダイアログUI
+- 🔲 プレビューのズーム機能
+- 🔲 プレビューのページめくり機能
 - 🔲 ドラッグ&ドロップ対応
-- 🔲 ページサムネイル一覧表示
-
-## ライセンス購入
-
-PDFハンドラのライセンスは、アプリケーション内から購入できます。
-
-### 購入方法
-- **アプリ内から**: 「ヘルプ」→「購入」メニューから購入できます
-- **詳細ガイド**: [ライセンス購入ガイド](docs/user-guide/payment-guide.md)
-- **エンタープライズ向け**: [エンタープライズ向けライセンスキー購入ガイド](docs/enterprise/license-key-purchase-guide.md)
-
-### ライセンスプラン
-- **Standard版（買い切り）**: ¥4,980（消費税不課税）— 一度購入で永続利用
-
-### 試用期間
-- 初回起動から**14日間**、全機能を無料でお試しいただけます
-- 試用期間中は、有償版の全機能が利用可能です
 
 ## ライセンス情報
 
 ### 使用ライブラリ
 - **CommunityToolkit.Mvvm**: MIT License
-- **PdfSharp 6.1.1**: MIT License（完全無償・商用利用可能）
-- **Docnet.Core 2.6.0**: MIT License
+- **iText 7**: AGPL / Commercial License (商用利用の場合はライセンス購入が必要)
+- **PdfSharpCore**: MIT License
 - **System.Drawing.Common**: MIT License
 
 ## 注意事項
 
 ### PDFライブラリについて
-- **PdfSharp 6.1.1**: PDF操作（結合、分割）に使用。MITライセンスのため商用利用も完全無償
-- **Docnet.Core 2.6.0**: PDFレンダリング・サムネイル生成に使用。Google PDFiumベース
-- **System.Drawing.Common**: 画像処理に使用
+- **iText 7**: PDF操作（ページ数取得、結合、分割）に使用（商用利用の場合はライセンスに注意）
+- **System.Drawing.Common**: サムネイル生成に使用
+- **PDFレンダリング**: 現在はプレースホルダー実装。実際のレンダリングにはSkiaSharp等の追加ライブラリが必要です
 
 ### ファイルロック対策
 - PDFをメモリに読み込むことでファイルロックを回避
@@ -226,26 +182,36 @@ dotnet --version
 - フォルダへのアクセス権限を確認
 - PDFファイルが他のアプリケーションで開かれていないか確認
 
+## 今後の開発予定
+
+### Phase 1: PDF操作の実装
+- PDFiumSharpの統合
+- iText 7の統合
+- 実際のPDFレンダリング
+
+### Phase 2: ダイアログの実装
+- カスタムダイアログウィンドウ
+- PDF結合ダイアログ
+- PDF分割ダイアログ
+
+### Phase 3: 追加機能
+- ページ抽出機能
+- ページ順序変更機能
+- バッチ処理機能
+
 ## 参考資料
 
 - [WPF公式ドキュメント](https://docs.microsoft.com/wpf/)
 - [CommunityToolkit.Mvvm](https://learn.microsoft.com/windows/communitytoolkit/mvvm/introduction)
-- [PdfSharp Documentation](https://www.pdfsharp.net/)
-- [Docnet.Core GitHub](https://github.com/GowenGit/docnet)
+- [iText 7 Documentation](https://itextpdf.com/products/itext-7)
 - [PDFium](https://pdfium.googlesource.com/pdfium/)
 
 ## 貢献
 
 プロジェクトへの貢献を歓迎します。Issue報告やPull Requestをお待ちしています。
 
-## サポート・お問い合わせ
+## 連絡先
 
 - プロジェクト管理者: PDFハンドラ開発チーム
-- バージョン: 1.0.0
-- 最終更新: 2025年1月1日
-バグ報告や機能要望は、[GitHub Issues](https://github.com/6EFB0D/pdf-handler/issues) にてお願いします。
-
----
-
-**バージョン**: 4.0.0
-**最終更新**: 2026年1月1日
+- バージョン: 1.0
+- 最終更新: 2024年12月26日

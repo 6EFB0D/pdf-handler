@@ -1,0 +1,31 @@
+PS C:\Users\admin_mak> Write-Host "=== PDFハンドラ インストーラー GUID生成 ===" -ForegroundColor Cyan
+>> Write-Host ""
+>> Write-Host "1. UpgradeCode（変更厳禁！メモしておいてください）" -ForegroundColor Yellow
+>> $upgradeCode = [guid]::NewGuid()
+>> Write-Host "UpgradeCode: $upgradeCode" -ForegroundColor Green
+>> Write-Host ""
+>> Write-Host "2. Component GUID（14個）" -ForegroundColor Yellow
+>> 1..14 | ForEach-Object {
+>> Write-Host "PUT-YOUR-GUID-HERE-$([guid]::NewGuid())"
+>> }
+=== PDFハンドラ インストーラー GUID生成 ===
+
+1. UpgradeCode（変更厳禁！メモしておいてください）
+UpgradeCode: 44c10202-84c8-491e-b015-cc662585ef4a
+
+2. Component GUID（14個）
+PUT-YOUR-GUID-HERE-f8601ac9-d077-4a59-a61b-8f32b525c77f		MainExecutable		
+PUT-YOUR-GUID-HERE-783b484a-098c-4d92-85ea-33d78743e5c7		Coredlls
+PUT-YOUR-GUID-HERE-014dbc8b-81c5-42df-8b32-b6ea1c9a66fb		InfrastructureDll
+PUT-YOUR-GUID-HERE-9202896a-74d3-443e-916c-c35b88966e71		PdfSharpDll
+PUT-YOUR-GUID-HERE-319ce317-31a7-4b1d-8e3d-1e10293a77fd		MvvmDll
+PUT-YOUR-GUID-HERE-09e2485a-5d38-4e89-9ddb-b52b4e39261a		DependencyInjectionDll
+PUT-YOUR-GUID-HERE-1513a154-317f-437f-b8f4-1038e41334b5		DependencyInjectionAbstractionsDll
+PUT-YOUR-GUID-HERE-af2a8c46-df65-4a19-a2b6-e907976b087e		SystemTextJsonDll
+PUT-YOUR-GUID-HERE-e722bd37-3178-4fe5-9d0d-387a6e46031c		ResourcesLegal
+PUT-YOUR-GUID-HERE-34a8696f-6da3-41bd-839e-b0443f812701		ResourcesDocs
+PUT-YOUR-GUID-HERE-3c5047be-5d3b-491f-83d8-e6211af88f88		LicenseFile
+PUT-YOUR-GUID-HERE-36e2fd8c-78d6-4ee1-a8b4-89db3d92f810		ReadmeFile
+PUT-YOUR-GUID-HERE-3e392165-5f73-448e-b580-b0bea07d86cd		ApplicationShortcut
+PUT-YOUR-GUID-HERE-5a7e01c3-cf51-4018-bab4-f2ded03b1e0e		DesktopShortcut
+PS C:\Users\admin_mak>
