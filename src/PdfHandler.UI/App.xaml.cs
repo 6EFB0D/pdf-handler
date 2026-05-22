@@ -112,18 +112,16 @@ public partial class App : Application
 
         ApplyRuntimeSettings(appSettings);
         
-        // Supabase設定（環境変数から読み込む、なければ開発用のデフォルト値を使用）
+        // Supabase設定（環境変数または PdfHandler.runtime.json。秘密鍵はリポジトリに含めない）
         appSettings.Supabase.Url = Environment.GetEnvironmentVariable("SUPABASE_URL")
             ?? appSettings.Supabase.Url;
-        appSettings.Supabase.AnonKey = Environment.GetEnvironmentVariable("SUPABASE_ANON_KEY") 
-            ?? (string.IsNullOrWhiteSpace(appSettings.Supabase.AnonKey)
-                ? "sb_publishable_ELiCbHZwAR-ekkwEvhzCcQ_mWWYB_-2"
-                : appSettings.Supabase.AnonKey); // 開発用フォールバック値
+        appSettings.Supabase.AnonKey = Environment.GetEnvironmentVariable("SUPABASE_ANON_KEY")
+            ?? appSettings.Supabase.AnonKey;
         appSettings.Supabase.ServiceRoleKey = Environment.GetEnvironmentVariable("SUPABASE_SERVICE_ROLE_KEY") 
             ?? ""; // Service Role Keyは機密情報のため、環境変数から読み込む必要がある
         
         // お問い合わせ先URL（サポート・ボリュームライセンス共通。環境変数で上書き可能）
-        // ※ リリース前: 下記のプレースホルダーを実際のURLに差し替えること。docs/RELEASE_CHECKLIST.md 参照
+        // ※ リリースビルド: プレースホルダを実URLに（運用 CI / runtime.json）。
         appSettings.ContactUrl = Environment.GetEnvironmentVariable("CONTACT_URL")
             ?? appSettings.ContactUrl;
 

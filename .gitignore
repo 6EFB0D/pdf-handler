@@ -420,6 +420,10 @@ FodyWeavers.xsd
 # Internal documentation (confidential)
 docs/internal/
 
+# 公開リポジトリではコミットしない（運用統計・アーカイブは開発側で管理）
+/stats/
+/archives/
+
 # Build output / installer output folders
 installer_output*/
 artifacts/

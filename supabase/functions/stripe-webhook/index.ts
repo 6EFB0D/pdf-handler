@@ -235,7 +235,7 @@ function buildErrorNotification(params: {
         <td style="padding:6px 12px;font-family:monospace;font-size:11px">${params.sessionId}</td></tr>
   </table>
   <p style="margin-top:16px">
-    <a href="https://supabase.com/dashboard/project/yzmjuotvkxcfnsgleyxl/functions" style="color:#1565c0">
+    <a href="https://supabase.com/dashboard/project/_/functions" style="color:#1565c0">
       → Supabase Edge Function ログを確認
     </a>
   </p>

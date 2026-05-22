@@ -38,8 +38,7 @@ public class AppSettings
     public string SurveyFormUrl { get; set; } = "https://docs.google.com/forms/d/1NpXzk1kyUn2LhUzQhhMHq_tnT1oOGAsv561L-7nMfos/viewform";
 
     /// <summary>
-    /// HMACオフライン検証用の秘密鍵（license-code-specification 準拠）
-    /// 環境変数 LICENSE_SECRET_KEY で設定。未設定だとオフライン検証不可。
+    /// HMACオフライン検証用の秘密鍵。環境変数 LICENSE_SECRET_KEY で設定。未設定だとオフライン検証不可。
     /// </summary>
     public string LicenseSecretKey { get; set; } = "";
 }
@@ -50,9 +49,9 @@ public class AppSettings
 public class SupabaseSettings
 {
     /// <summary>
-    /// Supabase URL
+    /// Supabase URL。運用環境では <c>PdfHandler.runtime.json</c> または環境変数 <c>SUPABASE_URL</c>。既定値はプレースホルダのみ。
     /// </summary>
-    public string Url { get; set; } = "https://yzmjuotvkxcfnsgleyxl.supabase.co";
+    public string Url { get; set; } = "https://YOUR_PROJECT.supabase.co";
 
     /// <summary>
     /// Supabase Anon Key（公開キー）
