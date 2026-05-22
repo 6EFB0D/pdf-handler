@@ -12,4 +12,4 @@
 - 内部向けチェックリスト、マイグレーション SQL、アーキテクチャとコンプライアンス根拠（長文・証跡類）
 - 旧来のローカル／リポジトリ直コミット型の統計・アーカイブ本体
 
-メンテナ向けの**設計メモのみ**は [`maintainer/download-stats-automation-plan.md`](maintainer/download-stats-automation-plan.md)（日次ダウンロードを Automations + Supabase に移す計画）として置いています。実コード・Secrets・マイグレーションの実行は Automations／DEV 側で行ってください。
+自動化や日次統計の**実装計画・ワークフロー**は、開発用クローンとは別にある **Automations リポジトリの `doc/`** に置いてください（本製品公開リポジトリには載せません）。
