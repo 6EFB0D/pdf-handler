@@ -1,6 +1,8 @@
 # PDFハンドラ
 
 [![GitHub release](https://img.shields.io/github/v/release/6EFB0D/pdf-handler?style=flat-square)](https://github.com/6EFB0D/pdf-handler/releases/latest)
+[![GitHub all releases](https://img.shields.io/github/downloads/6EFB0D/pdf-handler/total?style=flat-square&label=total%20downloads)](https://github.com/6EFB0D/pdf-handler/releases)
+[![GitHub release downloads](https://img.shields.io/github/downloads/6EFB0D/pdf-handler/latest/total?style=flat-square&label=latest%20downloads)](https://github.com/6EFB0D/pdf-handler/releases/latest)
 [![License](https://img.shields.io/github/license/6EFB0D/pdf-handler?style=flat-square)](LICENSE)
 
 **PDFハンドラ**は、ファイルサーバーやローカルフォルダ上の PDF を、Windows デスクトップから効率よく閲覧・整理・編集するためのアプリケーションです。
