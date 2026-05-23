@@ -64,17 +64,3 @@
 
 - **[お問い合わせフォーム（Google フォーム）](https://docs.google.com/forms/d/1NpXzk1kyUn2LhUzQhhMHq_tnT1oOGAsv561L-7nMfos/viewform)**
 - [support@office-goplan.com](mailto:support@office-goplan.com)
-
----
-
-<details>
-<summary>開発者向け</summary>
-
-```powershell
-.\scripts\build-release.ps1 -TargetEnvironment PROD
-.\tools\build-release.ps1 -TargetEnvironment PROD
-```
-
-配布ルール: [docs/release-artifact-layout.md](docs/release-artifact-layout.md)
-
-</details>
