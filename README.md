@@ -5,9 +5,11 @@
 
 **PDFハンドラ**は、ファイルサーバーやローカルフォルダ上の PDF を、Windows デスクトップから効率よく閲覧・整理・編集するためのアプリケーションです。
 
-- **製品紹介・購入**: [Office Go Plan（製品ページ）](https://office-goplan.com)
-- **ダウンロード（最新版）**: [GitHub Releases](https://github.com/6EFB0D/pdf-handler/releases/latest)
-- **お問い合わせ**: [support@office-goplan.com](mailto:support@office-goplan.com)
+| | |
+|---|---|
+| **製品紹介・購入** | [Office Go Plan](https://office-goplan.com) |
+| **ダウンロード** | [GitHub Releases](https://github.com/6EFB0D/pdf-handler/releases/latest)（インストーラのみ） |
+| **お問い合わせ** | [Google フォーム](https://docs.google.com/forms/d/1NpXzk1kyUn2LhUzQhhMHq_tnT1oOGAsv561L-7nMfos/viewform) |
 
 ## できること
 
@@ -19,32 +21,16 @@
 | フォルダツリー | 階層表示・ドラッグ＆ドロップでのコピー／移動 |
 | ライセンス | 14 日間の試用のあと、アプリ内から買い切りライセンスを購入可能 |
 
-## ダウンロードとインストール
+## インストール
 
-**推奨**: [Releases ページ](https://github.com/6EFB0D/pdf-handler/releases/latest) の Assets から **インストーラ** を取得してください。
+1. [Releases ページ](https://github.com/6EFB0D/pdf-handler/releases/latest) を開く
+2. Assets から **`PdfHandler-<version>-prod-setup.exe`** をダウンロード（例: `PdfHandler-1.1.3-prod-setup.exe`）
+3. ダウンロードしたファイルを実行し、画面の指示に従ってインストール（per-user・管理者権限不要）
+4. スタートメニューまたはデスクトップのショートカットから「PDFハンドラ」を起動
 
-| ファイル | 用途 |
-|----------|------|
-| `PdfHandler-<version>-prod-setup.exe` | **通常はこちら**（例: `PdfHandler-1.1.3-prod-setup.exe`） |
-| `PdfHandler-<version>-prod-setup-checksum.txt` | インストーラの SHA-256（任意） |
-| `PdfHandler-<version>-win-x64.zip` | **インストーラが SmartScreen 等でブロックされる場合のみ** |
-| `PdfHandler-<version>-win-x64-checksum.txt` | ZIP の SHA-256（任意） |
+必要に応じて、同梱の `PdfHandler-<version>-prod-setup-checksum.txt` で SHA-256 を確認できます。
 
-### インストール手順（setup.exe）
-
-1. `PdfHandler-<version>-prod-setup.exe` をダウンロード
-2. 実行し、画面の指示に従ってインストール（per-user・管理者権限不要）
-3. スタートメニューまたはデスクトップのショートカットから「PDFハンドラ」を起動
-
-### インストーラがブロックされる場合（ZIP 版）
-
-セットアップ EXE の実行が Windows Defender や SmartScreen で止まる場合のみ、同じ Release の **ZIP 版** を使います。
-
-1. `PdfHandler-<version>-win-x64.zip` をダウンロード
-2. 任意のフォルダに展開（例: `C:\Tools\PdfHandler`）
-3. 展開フォルダ内の `PdfHandler.UI.exe` を起動
-
-> ZIP 版はインストール（ショートカット作成等）を行いません。通常の利用は **setup.exe** をお使いください。
+> **配布物はインストーラ（setup.exe）のみです。** 展開して使う ZIP 版は公開していません。
 
 ### システム要件
 
@@ -68,45 +54,24 @@
 
 ## サポート
 
-- [GitHub Issues](https://github.com/6EFB0D/pdf-handler/issues) — 不具合報告・機能要望
-- [support@office-goplan.com](mailto:support@office-goplan.com)
+不具合報告・機能要望・お問い合わせは **GitHub Issues では受け付けていません**。
+
+- **[お問い合わせフォーム（Google フォーム）](https://docs.google.com/forms/d/1NpXzk1kyUn2LhUzQhhMHq_tnT1oOGAsv561L-7nMfos/viewform)**
+- メール: [support@office-goplan.com](mailto:support@office-goplan.com)
+
+アプリ内の **ヘルプ → お問い合わせフォーム** からも同じフォームを開けます。
 
 ---
 
-## 開発者向け（ソースからビルドする場合）
-
 <details>
-<summary>クリックして展開</summary>
-
-### プロジェクト構成
-
-```
-pdf-handler/
-├── PdfHandler.sln
-├── src/
-│   ├── PdfHandler.UI/          # WPF UI
-│   ├── PdfHandler.Core/        # ビジネスロジック
-│   └── PdfHandler.Infrastructure/
-└── scripts/                    # ビルド・デプロイ用
-```
-
-### 前提条件
-
-- Visual Studio 2022 以上、または .NET 8.0 SDK
-
-### ビルド
+<summary>開発者向け（ソースからビルドする場合）</summary>
 
 ```powershell
 dotnet build PdfHandler.sln
-```
-
-### リリースビルド（PROD）
-
-```powershell
 .\scripts\build-release.ps1 -TargetEnvironment PROD
 .\tools\build-release.ps1 -TargetEnvironment PROD
 ```
 
-成果物の配置は [docs/release-artifact-layout.md](docs/release-artifact-layout.md) を参照。
+詳細は Private リポジトリ内の `docs/release-artifact-layout.md` を参照してください。
 
 </details>
