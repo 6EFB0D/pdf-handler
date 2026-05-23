@@ -69,8 +69,8 @@ if (-not $Installer) {
 }
 Write-Host "      対象: $($Installer.Name)" -ForegroundColor Green
 
-# ---------- 4. ポータブル ZIP（scripts で生成済みならコピー、なければ作成） ----------
-Write-Host "`n[3/4] ポータブル ZIP を確認中..." -ForegroundColor Cyan
+# ---------- 4. ZIP 版（scripts で生成済みならコピー、なければ作成） ----------
+Write-Host "`n[3/4] ZIP 版を確認中..." -ForegroundColor Cyan
 $ReleaseRoot = Split-Path $SourceDir -Parent
 $PortableZipName = "PdfHandler-$Version-win-x64.zip"
 $PortableZipInArtifacts = Join-Path $ReleaseRoot $PortableZipName
@@ -108,7 +108,7 @@ $InstallerChecksumFile = Join-Path $OutputDir "$($Installer.BaseName)-checksum.t
 
 $PortableHash = (Get-FileHash $PortableZip.FullName -Algorithm SHA256).Hash
 $PortableChecksumText = @"
-# PDFハンドラ ポータブル ZIP チェックサム
+# PDFハンドラ ZIP 版 チェックサム
 # 生成日時: $Date
 # ファイル: $($PortableZip.Name)
 

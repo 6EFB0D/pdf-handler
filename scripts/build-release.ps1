@@ -139,7 +139,7 @@ function Write-PortableReleaseZip {
 
     Compress-Archive -Path ($items | ForEach-Object { $_.FullName }) -DestinationPath $zipPath -CompressionLevel Optimal
 
-    $checksum = Write-Sha256ChecksumFile -FilePath $zipPath -Label "ポータブル ZIP"
+    $checksum = Write-Sha256ChecksumFile -FilePath $zipPath -Label "ZIP 版"
 
     Write-Host ("  ZIP: " + $zipPath) -ForegroundColor Green
     Write-Host ("  ZIP SHA-256: " + $checksum.Hash) -ForegroundColor DarkGray
@@ -277,7 +277,7 @@ if (Test-Path -LiteralPath $OutDir) {
 }
 New-Item -ItemType Directory -Force -Path $OutDir | Out-Null
 
-# エンドユーザー向けポータブル配布: self-contained 推奨（.NET ランタイム未導入PCでも実行可能）
+# エンドユーザー向け配布: self-contained（.NET ランタイム未導入 PC でも実行可能）
 & dotnet publish $UiProject `
     --configuration Release `
     --runtime win-x64 `

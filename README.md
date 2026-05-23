@@ -1,264 +1,112 @@
-# PDFハンドラ デスクトップアプリケーション
+# PDFハンドラ
 
 [![GitHub release](https://img.shields.io/github/v/release/6EFB0D/pdf-handler?style=flat-square)](https://github.com/6EFB0D/pdf-handler/releases/latest)
-[![GitHub all releases](https://img.shields.io/github/downloads/6EFB0D/pdf-handler/total?style=flat-square&label=total%20downloads)](https://github.com/6EFB0D/pdf-handler/releases)
-[![GitHub release downloads](https://img.shields.io/github/downloads/6EFB0D/pdf-handler/latest/total?style=flat-square&label=latest%20downloads)](https://github.com/6EFB0D/pdf-handler/releases/latest)
 [![License](https://img.shields.io/github/license/6EFB0D/pdf-handler?style=flat-square)](LICENSE)
 
-ファイルサーバ上のPDFファイルを効率的に管理・編集するためのWPFデスクトップアプリケーション
+**PDFハンドラ**は、ファイルサーバーやローカルフォルダ上の PDF を、Windows デスクトップから効率よく閲覧・整理・編集するためのアプリケーションです。
 
-## プロジェクト構成
+- **製品紹介・購入**: [Office Go Plan（製品ページ）](https://office-goplan.com)
+- **ダウンロード（最新版）**: [GitHub Releases](https://github.com/6EFB0D/pdf-handler/releases/latest)
+- **お問い合わせ**: [support@office-goplan.com](mailto:support@office-goplan.com)
 
-```
-pdf-handler/
-├── PdfHandler.sln              # ソリューションファイル
-├── src/
-│   ├── PdfHandler.UI/          # WPF UIプロジェクト
-│   │   ├── Views/              # XAMLビュー
-│   │   ├── ViewModels/         # ViewModelクラス
-│   │   └── Converters/         # 値コンバーター
-│   ├── PdfHandler.Core/        # ビジネスロジック
-│   │   ├── Models/             # ドメインモデル
-│   │   └── Interfaces/         # サービスインターフェース
-│   └── PdfHandler.Infrastructure/  # インフラストラクチャ
-│       └── Services/           # サービス実装
-└── README.md
-```
+## できること
 
-## 技術スタック
+| 機能 | 説明 |
+|------|------|
+| PDF プレビュー | フォルダを開き、一覧から PDF を選んで右ペインに表示 |
+| ファイル名変更 | プレビュー中でも F2 でリネーム（ファイルロックを回避） |
+| PDF 結合・分割 | 複数 PDF の結合、ページ指定での分割 |
+| フォルダツリー | 階層表示・ドラッグ＆ドロップでのコピー／移動 |
+| ライセンス | 14 日間の試用のあと、アプリ内から買い切りライセンスを購入可能 |
 
-- **開発言語**: C# 10
-- **フレームワーク**: .NET 8.0
-- **UI**: WPF (Windows Presentation Foundation)
-- **アーキテクチャ**: MVVM (Model-View-ViewModel)
-- **DIコンテナ**: Microsoft.Extensions.DependencyInjection
-- **MVVMツールキット**: CommunityToolkit.Mvvm
-- **PDFライブラリ**:
-  - **PdfSharp 6.1.1** (PDF操作・結合・分割) - MIT License
-  - **Docnet.Core 2.6.0** (PDF表示・サムネイル生成) - MIT License
-  - System.Drawing.Common (画像処理)
+## ダウンロードとインストール
 
-すべてMITライセンスのライブラリを使用しており、**完全無償・商用利用可能**です。
+**推奨**: [Releases ページ](https://github.com/6EFB0D/pdf-handler/releases/latest) の Assets から **インストーラ** を取得してください。
 
-## 主要機能
+| ファイル | 用途 |
+|----------|------|
+| `PdfHandler-<version>-prod-setup.exe` | **通常はこちら**（例: `PdfHandler-1.1.3-prod-setup.exe`） |
+| `PdfHandler-<version>-prod-setup-checksum.txt` | インストーラの SHA-256（任意） |
+| `PdfHandler-<version>-win-x64.zip` | **インストーラが SmartScreen 等でブロックされる場合のみ** |
+| `PdfHandler-<version>-win-x64-checksum.txt` | ZIP の SHA-256（任意） |
 
-### 1. PDFプレビュー＆ファイル名変更
-- フォルダ階層のツリー表示
-- PDFファイルのサムネイル/リスト表示
-- PDFプレビュー表示（ON/OFF切替可能）
-- ファイルロックを回避したファイル名変更
+### インストール手順（setup.exe）
 
-### 2. PDF結合
-- 複数PDFファイルの結合
-- 結合順序の調整
-- 進捗表示
+1. `PdfHandler-<version>-prod-setup.exe` をダウンロード
+2. 実行し、画面の指示に従ってインストール（per-user・管理者権限不要）
+3. スタートメニューまたはデスクトップのショートカットから「PDFハンドラ」を起動
 
-### 3. PDF分割
-- ページ範囲指定分割
-- 1ページずつ分割
-- 等分割
+### インストーラがブロックされる場合（ZIP 版）
 
-## インストール方法
+セットアップ EXE の実行が Windows Defender や SmartScreen で止まる場合のみ、同じ Release の **ZIP 版** を使います。
 
-### 一般ユーザー向け
-
-**インストーラ（.exe）をダウンロードしてセットアップする場合**
-
-1. **最新リリースをダウンロード**
-   - [Releases ページ](https://github.com/6EFB0D/pdf-handler/releases/latest)にアクセス
-   - 「Assets」から `PdfHandler-<version>-prod-setup.exe` をダウンロード（例: v1.1.3 では `PdfHandler-1.1.3-prod-setup.exe`）
-   - 必要に応じて同梱の `PdfHandler-<version>-prod-setup-checksum.txt` で SHA-256 を確認できます
-
-2. **インストールと起動**
-   - ダウンロードしたセットアップ EXE を実行し、画面の指示に従ってインストールします（per-user・管理者権限不要）
-   - インストール後、スタートメニューまたはデスクトップのショートカットから「PDFハンドラ」を起動します
-
-3. **システム要件**
-   - Windows 10 / 11 (64bit)
-   - .NET 8.0 Runtime（インストーラに同梱のため、通常は別途インストール不要）
-
-### インストーラがブロックされる場合（ZIP）
-
-Windows の SmartScreen や Defender で **セットアップ EXE の実行が止まる**場合は、同じリリースの **ポータブル ZIP** を利用できます。
-
-1. [Releases ページ](https://github.com/6EFB0D/pdf-handler/releases/latest) の Assets から `PdfHandler-<version>-win-x64.zip` をダウンロード（例: `PdfHandler-1.1.3-win-x64.zip`）
+1. `PdfHandler-<version>-win-x64.zip` をダウンロード
 2. 任意のフォルダに展開（例: `C:\Tools\PdfHandler`）
 3. 展開フォルダ内の `PdfHandler.UI.exe` を起動
-4. 必要に応じて `PdfHandler-<version>-win-x64-checksum.txt` で SHA-256 を確認
 
-> **補足**: 公開配布の主経路は **PROD 向けインストーラ（setup.exe）** です。ZIP は追加アセットです。DEV 用ビルドは GitHub Releases には掲載しません（社内検証は `artifacts/release/dev/` を参照）。
+> ZIP 版はインストール（ショートカット作成等）を行いません。通常の利用は **setup.exe** をお使いください。
+
+### システム要件
+
+- Windows 10 / 11（64bit）
+- .NET 8.0 Runtime（インストーラに同梱のため、通常は別途インストール不要）
 
 ### ソフトウェアの更新
 
 - 起動時に新しいバージョンがあればお知らせします（自動ダウンロード・インストールは行いません）
-- **ヘルプ → バージョン情報** で更新を確認できます。起動時お知らせを止めたときだけ「起動時のお知らせを再び表示」が出ます
+- **ヘルプ → バージョン情報** で更新を確認できます
 
-### 開発者向け
+## ライセンス・試用
 
-ソースコードからビルドする場合は、以下の「ビルド方法」セクションを参照してください。
+- **Standard 版（買い切り）**: ¥4,980（消費税不課税）— 詳細は [製品ページ](https://office-goplan.com) またはアプリ内「購入」
+- **試用期間**: 初回起動から 14 日間、全機能を無料でお試しいただけます
+- 購入ガイド: [docs/user-guide/payment-guide.md](docs/user-guide/payment-guide.md)
 
-## ビルド方法
+## 変更履歴
 
-### 前提条件
-- Visual Studio 2022以上
-- .NET 8.0 SDK以上
+[CHANGELOG.md](CHANGELOG.md) を参照してください。
 
-### ビルド手順
+## サポート
 
-1. ソリューションを開く
-```bash
-cd pdf-handler
-start PdfHandler.sln
+- [GitHub Issues](https://github.com/6EFB0D/pdf-handler/issues) — 不具合報告・機能要望
+- [support@office-goplan.com](mailto:support@office-goplan.com)
+
+---
+
+## 開発者向け（ソースからビルドする場合）
+
+<details>
+<summary>クリックして展開</summary>
+
+### プロジェクト構成
+
+```
+pdf-handler/
+├── PdfHandler.sln
+├── src/
+│   ├── PdfHandler.UI/          # WPF UI
+│   ├── PdfHandler.Core/        # ビジネスロジック
+│   └── PdfHandler.Infrastructure/
+└── scripts/                    # ビルド・デプロイ用
 ```
 
-2. Visual Studioでビルド
-- メニューから「ビルド」→「ソリューションのビルド」を選択
-- またはCtrl+Shift+B
+### 前提条件
 
-3. コマンドラインからビルド
-```bash
+- Visual Studio 2022 以上、または .NET 8.0 SDK
+
+### ビルド
+
+```powershell
 dotnet build PdfHandler.sln
 ```
 
-## 実行方法
+### リリースビルド（PROD）
 
-### Visual Studioから実行
-1. スタートアッププロジェクトを `PdfHandler.UI` に設定
-2. F5キーで実行
-
-### コマンドラインから実行
-```bash
-cd src/PdfHandler.UI
-dotnet run
+```powershell
+.\scripts\build-release.ps1 -TargetEnvironment PROD
+.\tools\build-release.ps1 -TargetEnvironment PROD
 ```
 
-## アーキテクチャ概要
+成果物の配置は [docs/release-artifact-layout.md](docs/release-artifact-layout.md) を参照。
 
-### レイヤー構成
-
-```
-┌─────────────────────────────┐
-│  Presentation Layer (UI)    │  WPF Views + ViewModels
-├─────────────────────────────┤
-│  Application Layer (Core)   │  Business Logic + Interfaces
-├─────────────────────────────┤
-│  Infrastructure Layer       │  File I/O + PDF Operations
-└─────────────────────────────┘
-```
-
-### 主要クラス
-
-#### Core Layer
-- `PdfFileInfo`: PDFファイル情報モデル
-- `FolderNode`: フォルダツリーノードモデル
-- `IFileService`: ファイル操作サービスインターフェース
-- `IPdfService`: PDF操作サービスインターフェース
-- `IPdfMergeService`: PDF結合サービスインターフェース
-- `IPdfSplitService`: PDF分割サービスインターフェース
-
-#### Infrastructure Layer
-- `FileService`: ファイル操作の実装
-- `PdfService`: PDF基本操作の実装
-- `PdfMergeService`: PDF結合の実装
-- `PdfSplitService`: PDF分割の実装
-
-#### UI Layer
-- `MainWindowViewModel`: メインウィンドウのViewModel
-- `MainWindow`: メインウィンドウのView
-
-## 開発状況
-
-### 実装済み機能（v1.1.3 時点の主要項目）
-- ✅ プロジェクト構造の確立（3層アーキテクチャ）
-- ✅ 基本UI (3ペイン構成)
-- ✅ フォルダツリー表示
-- ✅ サムネイル/リスト表示切替
-- ✅ プレビューON/OFF切替
-- ✅ DIコンテナによる依存性注入
-- ✅ MVVMパターンの実装
-- ✅ PdfSharpによるPDF結合機能
-- ✅ PdfSharpによるPDF分割機能
-- ✅ Docnet.CoreによるPDFレンダリング（実際のPDF表示）
-- ✅ サムネイル生成（第1ページ）
-- ✅ ファイル名変更（F2キー、インライン編集）
-- ✅ ファイルロック回避（メモリストリーム方式）
-- ✅ お気に入りフォルダ管理
-- ✅ PDF結合・分割ダイアログUI
-
-### 実装予定機能
-- 🔲 ページ抽出・回転・削除機能
-- 🔲 注釈機能（ハイライト、テキストボックス、手書き）
-- 🔲 ドラッグ&ドロップ対応
-- 🔲 ページサムネイル一覧表示
-
-## ライセンス購入
-
-PDFハンドラのライセンスは、アプリケーション内から購入できます。
-
-### 購入方法
-- **アプリ内から**: 「ヘルプ」→「購入」メニューから購入できます
-- **詳細ガイド**: [ライセンス購入ガイド](docs/user-guide/payment-guide.md)
-- **エンタープライズ向け**: [エンタープライズ向けライセンスキー購入ガイド](docs/enterprise/license-key-purchase-guide.md)
-
-### ライセンスプラン
-- **Standard版（買い切り）**: ¥4,980（消費税不課税）— 一度購入で永続利用
-
-### 試用期間
-- 初回起動から**14日間**、全機能を無料でお試しいただけます
-- 試用期間中は、有償版の全機能が利用可能です
-
-## ライセンス情報
-
-### 使用ライブラリ
-- **CommunityToolkit.Mvvm**: MIT License
-- **PdfSharp 6.1.1**: MIT License（完全無償・商用利用可能）
-- **Docnet.Core 2.6.0**: MIT License
-- **System.Drawing.Common**: MIT License
-
-## 注意事項
-
-### PDFライブラリについて
-- **PdfSharp 6.1.1**: PDF操作（結合、分割）に使用。MITライセンスのため商用利用も完全無償
-- **Docnet.Core 2.6.0**: PDFレンダリング・サムネイル生成に使用。Google PDFiumベース
-- **System.Drawing.Common**: 画像処理に使用
-
-### ファイルロック対策
-- PDFをメモリに読み込むことでファイルロックを回避
-- 大容量PDFの場合はメモリ使用量に注意
-
-## トラブルシューティング
-
-### ビルドエラーが発生する場合
-1. NuGetパッケージの復元を実行
-```bash
-dotnet restore
-```
-
-2. .NET SDKのバージョンを確認
-```bash
-dotnet --version
-```
-
-### 実行時エラーが発生する場合
-- フォルダへのアクセス権限を確認
-- PDFファイルが他のアプリケーションで開かれていないか確認
-
-## 参考資料
-
-- [WPF公式ドキュメント](https://docs.microsoft.com/wpf/)
-- [CommunityToolkit.Mvvm](https://learn.microsoft.com/windows/communitytoolkit/mvvm/introduction)
-- [PdfSharp Documentation](https://www.pdfsharp.net/)
-- [Docnet.Core GitHub](https://github.com/GowenGit/docnet)
-- [PDFium](https://pdfium.googlesource.com/pdfium/)
-
-## 貢献
-
-プロジェクトへの貢献を歓迎します。Issue報告やPull Requestをお待ちしています。
-
-## サポート・お問い合わせ
-
-- プロジェクト管理者: PDFハンドラ開発チーム
-- 最新リリース: [GitHub Releases](https://github.com/6EFB0D/pdf-handler/releases/latest)（公開後は **v1.1.3** が latest）
-- 変更履歴: [CHANGELOG.md](CHANGELOG.md)
-
-バグ報告や機能要望は、[GitHub Issues](https://github.com/6EFB0D/pdf-handler/issues) にてお願いします。
+</details>

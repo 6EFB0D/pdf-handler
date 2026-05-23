@@ -10,11 +10,11 @@ PDF Handler の配布物・検証出力は、DEV / PROD とバージョンが混
 artifacts/
   release/
     prod/
-      PdfHandler-<version>-win-x64/          # ポータブル展開フォルダ
+      PdfHandler-<version>-win-x64/          # 配布用展開フォルダ（ZIP 作成元）
         PdfHandler.UI.exe
         PdfHandler.runtime.json              # PROD Supabase
         README_RELEASE.txt
-      PdfHandler-<version>-win-x64.zip       # ポータブル ZIP（GitHub 追加アセット用）
+      PdfHandler-<version>-win-x64.zip       # ZIP 版（setup がブロックされる場合の代替）
       PdfHandler-<version>-win-x64-checksum.txt
     dev/
       PdfHandler-<version>-win-x64/
@@ -35,11 +35,11 @@ installer_output/                            # Inno Setup 出力（tools/build-r
 
 | 成果物 | 例（v1.1.3 PROD） |
 |--------|-------------------|
-| ポータブルフォルダ | `artifacts/release/prod/PdfHandler-1.1.3-win-x64/` |
-| ポータブル ZIP | `artifacts/release/prod/PdfHandler-1.1.3-win-x64.zip` |
+| 配布フォルダ | `artifacts/release/prod/PdfHandler-1.1.3-win-x64/` |
+| ZIP 版 | `artifacts/release/prod/PdfHandler-1.1.3-win-x64.zip` |
 | インストーラ | `installer_output/PdfHandler-1.1.3-prod-setup.exe` |
 
-ZIP はインストーラの**代替**（SmartScreen / Defender で setup.exe が止まる場合）。インストーラ一本化ではない。
+ZIP 版はインストーラの**代替**（SmartScreen / Defender で setup.exe が止まる場合）。**通常は setup.exe を配布・案内する。**
 
 ## ビルドコマンド
 
@@ -74,7 +74,7 @@ DEV:
 .\tools\build-release.ps1 -TargetEnvironment PROD
 ```
 
-`scripts/build-release.ps1` でポータブルフォルダと ZIP／チェックサムを生成し、`tools/build-release.ps1` で setup.exe と ZIP を `installer_output/` に揃えます。
+`scripts/build-release.ps1` で配布フォルダと ZIP／チェックサムを生成し、`tools/build-release.ps1` で setup.exe と ZIP を `installer_output/` に揃えます。
 
 ## 起動ルール
 
