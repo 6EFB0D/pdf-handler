@@ -42,7 +42,7 @@ public class AppSettings
     /// 商品紹介ページURL（ヘルプ → サポート・お問い合わせ 内で使用）
     /// 環境変数 PRODUCT_PAGE_URL で上書き可能。
     /// </summary>
-    public string ProductPageUrl { get; set; } = "https://github.com/6EFB0D/pdf-handler";
+    public string ProductPageUrl { get; set; } = "https://6efb0d.github.io/office-goplan/pdfhandler.html";
 
     /// <summary>
     /// アンケート・要望フォームURL（Google フォーム等の回答用 /viewform URL）

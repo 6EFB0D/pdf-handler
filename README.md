@@ -7,8 +7,8 @@
 
 | | |
 |---|---|
-| **製品紹介・購入** | [Office Go Plan](https://office-goplan.com) |
-| **ダウンロード** | [GitHub Releases](https://github.com/6EFB0D/pdf-handler/releases/latest)（インストーラのみ） |
+| **製品紹介・購入** | [pdfHandler 製品ページ](https://6efb0d.github.io/office-goplan/pdfhandler.html) |
+| **ダウンロード** | [GitHub Releases](https://github.com/6EFB0D/pdf-handler/releases/latest) |
 | **お問い合わせ** | [Google フォーム](https://docs.google.com/forms/d/1NpXzk1kyUn2LhUzQhhMHq_tnT1oOGAsv561L-7nMfos/viewform) |
 
 ## できること
@@ -21,21 +21,28 @@
 | フォルダツリー | 階層表示・ドラッグ＆ドロップでのコピー／移動 |
 | ライセンス | 14 日間の試用のあと、アプリ内から買い切りライセンスを購入可能 |
 
+詳細は [製品ページ](https://6efb0d.github.io/office-goplan/pdfhandler.html) を参照してください。
+
 ## インストール
 
-1. [Releases ページ](https://github.com/6EFB0D/pdf-handler/releases/latest) を開く
-2. Assets から **`PdfHandler-<version>-prod-setup.exe`** をダウンロード（例: `PdfHandler-1.1.3-prod-setup.exe`）
-3. ダウンロードしたファイルを実行し、画面の指示に従ってインストール（per-user・管理者権限不要）
-4. スタートメニューまたはデスクトップのショートカットから「PDFハンドラ」を起動
+[Releases ページ](https://github.com/6EFB0D/pdf-handler/releases/latest) の Assets から取得します。
 
-必要に応じて、同梱の `PdfHandler-<version>-prod-setup-checksum.txt` で SHA-256 を確認できます。
+| ファイル | 用途 |
+|----------|------|
+| `PdfHandler-<version>-prod-setup.exe` | **通常はこちら**（例: `PdfHandler-1.1.3-prod-setup.exe`） |
+| `PdfHandler-<version>-prod-setup.zip` | setup.exe を ZIP にしたもの（EXE 直ダウンロードがブロックされる場合） |
+| `PdfHandler-<version>-prod-setup-checksum.txt` | setup.exe の SHA-256（任意） |
 
-> **配布物はインストーラ（setup.exe）のみです。** 展開して使う ZIP 版は公開していません。
+1. 上記の **setup.exe**（または setup.zip を展開して中の setup.exe）を実行
+2. 画面の指示に従ってインストール（per-user・管理者権限不要）
+3. スタートメニューまたはデスクトップのショートカットから起動
+
+> **Source code (zip)** は GitHub が自動付与するソースアーカイブです。インストーラではありません。
 
 ### システム要件
 
 - Windows 10 / 11（64bit）
-- .NET 8.0 Runtime（インストーラに同梱のため、通常は別途インストール不要）
+- .NET 8.0 Runtime（インストーラに同梱）
 
 ### ソフトウェアの更新
 
@@ -44,34 +51,28 @@
 
 ## ライセンス・試用
 
-- **Standard 版（買い切り）**: ¥4,980（消費税不課税）— 詳細は [製品ページ](https://office-goplan.com) またはアプリ内「購入」
-- **試用期間**: 初回起動から 14 日間、全機能を無料でお試しいただけます
-- 購入ガイド: [docs/user-guide/payment-guide.md](docs/user-guide/payment-guide.md)
+- **Standard 版（買い切り）**: ¥4,980（税込）— [製品ページ](https://6efb0d.github.io/office-goplan/pdfhandler.html)
+- **試用期間**: 初回起動から 14 日間
 
 ## 変更履歴
 
-[CHANGELOG.md](CHANGELOG.md) を参照してください。
+[CHANGELOG.md](CHANGELOG.md)
 
 ## サポート
 
-不具合報告・機能要望・お問い合わせは **GitHub Issues では受け付けていません**。
-
 - **[お問い合わせフォーム（Google フォーム）](https://docs.google.com/forms/d/1NpXzk1kyUn2LhUzQhhMHq_tnT1oOGAsv561L-7nMfos/viewform)**
-- メール: [support@office-goplan.com](mailto:support@office-goplan.com)
-
-アプリ内の **ヘルプ → お問い合わせフォーム** からも同じフォームを開けます。
+- [support@office-goplan.com](mailto:support@office-goplan.com)
 
 ---
 
 <details>
-<summary>開発者向け（ソースからビルドする場合）</summary>
+<summary>開発者向け</summary>
 
 ```powershell
-dotnet build PdfHandler.sln
 .\scripts\build-release.ps1 -TargetEnvironment PROD
 .\tools\build-release.ps1 -TargetEnvironment PROD
 ```
 
-詳細は Private リポジトリ内の `docs/release-artifact-layout.md` を参照してください。
+配布ルール: [docs/release-artifact-layout.md](docs/release-artifact-layout.md)
 
 </details>
