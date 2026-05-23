@@ -28,7 +28,8 @@ namespace PdfHandler.UI.Views
             
             // バージョン情報を読み込み
             LoadVersionInfo();
-            
+            RefreshStartupNotificationButton();
+
             // 自動的に更新確認（バックグラウンド）
             _ = CheckForUpdatesInBackgroundAsync();
         }
@@ -130,6 +131,39 @@ namespace PdfHandler.UI.Views
                 UpdateStatusTextBlock.Foreground = new System.Windows.Media.SolidColorBrush(
                     System.Windows.Media.Color.FromRgb(0x28, 0xA7, 0x45));
             }
+        }
+
+        private void RefreshStartupNotificationButton()
+        {
+            var store = new UpdateNotificationStore();
+            ReEnableStartupNotificationButton.Visibility = store.IsSuppressed
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+        }
+
+        private void ReEnableStartupNotification_Click(object sender, RoutedEventArgs e)
+        {
+            var store = new UpdateNotificationStore();
+            if (!store.IsSuppressed)
+            {
+                MessageBox.Show(
+                    this,
+                    "起動時の更新お知らせは、すでに有効です。\nお知らせを止めた場合は、起動時のダイアログで「次回以降表示しない」をオンにしてください。",
+                    "更新のお知らせ",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+                RefreshStartupNotificationButton();
+                return;
+            }
+
+            store.ClearSuppression();
+            RefreshStartupNotificationButton();
+            MessageBox.Show(
+                this,
+                "起動時の更新お知らせを再有効化しました。\n新しいバージョンが公開されれば、次回起動時にお知らせします。",
+                "更新のお知らせ",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
         }
 
         /// <summary>

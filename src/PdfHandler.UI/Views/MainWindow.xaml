@@ -94,9 +94,6 @@
             <MenuItem Header="ヘルプ(_H)">
                 <MenuItem Header="取扱説明書(_M)" Click="ShowUserManual_Click" InputGestureText="F1"/>
                 <Separator/>
-                <MenuItem Header="更新の確認(_U)..." Click="CheckForUpdates_Click"/>
-                <MenuItem Header="起動時の更新通知を再び表示" Click="ResetUpdateNotification_Click"/>
-                <Separator/>
                 <MenuItem x:Name="LicenseMenuItem" Header="ライセンス(_L)..." Click="License_Click"/>
                 <MenuItem Header="バージョン情報(_A)" Click="About_Click"/>
                 <Separator/>

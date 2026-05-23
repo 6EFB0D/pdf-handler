@@ -49,20 +49,8 @@ public sealed class UpdateNotificationStore
         Save(new UpdateNotificationState());
     }
 
-    /// <summary>
-    /// 「起動時の更新通知を再び表示」用。直後に同じ公開版の通知を出さないよう、
-    /// 現在 GitHub 上の最新タグまでを済み扱いにする（それより新しい版が出たときだけ起動時通知）。
-    /// </summary>
-    public void ReEnableNotificationsThroughCurrentLatest(string? latestTagName)
-    {
-        if (string.IsNullOrWhiteSpace(latestTagName))
-        {
-            ClearSuppression();
-            return;
-        }
-
-        SetSuppressedThroughTag(latestTagName.Trim());
-    }
+    /// <summary>起動時お知らせを「次回以降表示しない」で抑止しているか。</summary>
+    public bool IsSuppressed => !string.IsNullOrWhiteSpace(GetSuppressedThroughTag());
 
     public string? GetSuppressedThroughTag() => Load().SuppressedThroughTag;
 
