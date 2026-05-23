@@ -30,7 +30,7 @@
     <PackageReference Include="Docnet.Core" Version="2.6.0" />
     
     <!-- Supabase統合 -->
-    <PackageReference Include="Supabase" Version="1.0.0" />
+    <PackageReference Include="Supabase" Version="1.1.1" />
     
     <!-- Stripe統合 -->
     <PackageReference Include="Stripe.net" Version="47.0.0" />
