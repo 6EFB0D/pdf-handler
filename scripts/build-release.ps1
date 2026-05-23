@@ -83,6 +83,140 @@ function Get-GitCommitOrNull {
     }
 }
 
+function Write-Sha256ChecksumFile {
+    param(
+        [string]$FilePath,
+        [string]$Label
+    )
+
+    if (-not (Test-Path -LiteralPath $FilePath)) {
+        Write-Error ("File not found for checksum: " + $FilePath)
+    }
+
+    $hash = (Get-FileHash -LiteralPath $FilePath -Algorithm SHA256).Hash
+    $fileName = [IO.Path]::GetFileName($FilePath)
+    $date = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+    $text = @"
+# PDFハンドラ $Label チェックサム
+# 生成日時: $date
+# ファイル: $fileName
+
+SHA256: $hash
+"@
+    if ($FilePath -match '\.zip$') {
+        $checksumPath = $FilePath -replace '\.zip$', '-checksum.txt'
+    } elseif ($FilePath -match '\.exe$') {
+        $checksumPath = $FilePath -replace '\.exe$', '-checksum.txt'
+    } else {
+        $checksumPath = "$FilePath-checksum.txt"
+    }
+
+    [System.IO.File]::WriteAllText($checksumPath, $text, [System.Text.UTF8Encoding]::new($false))
+    return @{
+        Path = $checksumPath
+        Hash = $hash
+    }
+}
+
+function Write-PortableReleaseZip {
+    param(
+        [string]$SourceDir,
+        [string]$Version
+    )
+
+    $releaseRoot = Join-Path (Split-Path $SourceDir -Parent) ""
+    $zipName = "PdfHandler-$Version-win-x64.zip"
+    $zipPath = Join-Path $releaseRoot $zipName
+
+    if (Test-Path -LiteralPath $zipPath) {
+        Remove-Item -LiteralPath $zipPath -Force
+    }
+
+    $items = Get-ChildItem -LiteralPath $SourceDir -Force
+    if ($items.Count -eq 0) {
+        Write-Error ("Nothing to zip in: " + $SourceDir)
+    }
+
+    Compress-Archive -Path ($items | ForEach-Object { $_.FullName }) -DestinationPath $zipPath -CompressionLevel Optimal
+
+    $checksum = Write-Sha256ChecksumFile -FilePath $zipPath -Label "ポータブル ZIP"
+
+    Write-Host ("  ZIP: " + $zipPath) -ForegroundColor Green
+    Write-Host ("  ZIP SHA-256: " + $checksum.Hash) -ForegroundColor DarkGray
+    Write-Host ("  Checksum: " + $checksum.Path) -ForegroundColor DarkGray
+
+    return @{
+        ZipPath = $zipPath
+        ChecksumPath = $checksum.Path
+        Sha256 = $checksum.Hash
+    }
+}
+
+function Write-ReadmeReleaseTxt {
+    param(
+        [string]$OutputDir,
+        [string]$Version,
+        [string]$TargetEnvironment,
+        [string]$InformationalVersion
+    )
+
+    $readmePath = Join-Path $OutputDir "README_RELEASE.txt"
+    $content = @"
+PDFハンドラ $Version ($TargetEnvironment)
+InformationalVersion: $InformationalVersion
+
+起動: PdfHandler.UI.exe をダブルクリック（このフォルダ内）
+
+配布:
+- 推奨: インストーラ (tools\build-release.ps1 で生成する *-setup.exe)
+- 代替: 同じバージョンの PdfHandler-$Version-win-x64.zip（SmartScreen 等で EXE が止まる場合）
+
+同梱: PdfHandler.runtime.json（接続先 $TargetEnvironment）
+"@
+    [System.IO.File]::WriteAllText($readmePath, $content.TrimEnd() + "`n", [System.Text.UTF8Encoding]::new($false))
+    Write-Host ("  Wrote " + $readmePath) -ForegroundColor DarkGray
+}
+
+function Write-PdfHandlerRuntimeJson {
+    param(
+        [string]$OutputDir,
+        [ValidateSet("DEV", "PROD")]
+        [string]$TargetEnvironment
+    )
+
+    $devUrl = "https://yzmjuotvkxcfnsgleyxl.supabase.co"
+    $prodUrl = "https://kmrzktsykjibslajpecu.supabase.co"
+    $devAnonFallback = "sb_publishable_ELiCbHZwAR-ekkwEvhzCcQ_mWWYB_-2"
+
+    if ($TargetEnvironment -eq "PROD") {
+        $supabaseUrl = $prodUrl
+        $anonKey = $env:PDFHANDLER_PROD_SUPABASE_ANON_KEY
+        if ([string]::IsNullOrWhiteSpace($anonKey)) {
+            $anonKey = $env:SUPABASE_ANON_KEY
+        }
+    } else {
+        $supabaseUrl = $devUrl
+        $anonKey = $env:SUPABASE_ANON_KEY
+        if ([string]::IsNullOrWhiteSpace($anonKey)) {
+            $anonKey = $devAnonFallback
+        }
+    }
+
+    if ([string]::IsNullOrWhiteSpace($anonKey)) {
+        Write-Warning "Supabase Anon Key is empty for $TargetEnvironment. Set PDFHANDLER_PROD_SUPABASE_ANON_KEY or SUPABASE_ANON_KEY in scripts\Secrets.local.ps1"
+    }
+
+    $runtime = [ordered]@{
+        targetEnvironment = $TargetEnvironment
+        supabaseUrl       = $supabaseUrl
+        supabaseAnonKey   = $anonKey
+    }
+
+    $runtimePath = Join-Path $OutputDir "PdfHandler.runtime.json"
+    $runtime | ConvertTo-Json | Set-Content -Path $runtimePath -Encoding UTF8
+    Write-Host ("  Wrote " + $runtimePath) -ForegroundColor DarkGray
+}
+
 function Write-BuildManifest {
     param(
         [string]$RepoRoot,
@@ -100,6 +234,8 @@ function Write-BuildManifest {
     $exePath = Join-Path $OutputDir "PdfHandler.UI.exe"
     $runtimePath = Join-Path $OutputDir "PdfHandler.runtime.json"
     $readmePath = Join-Path $OutputDir "README_RELEASE.txt"
+    $releaseRoot = Split-Path $OutputDir -Parent
+    $zipPath = Join-Path $releaseRoot ("PdfHandler-" + $Version + "-win-x64.zip")
 
     $entry = [ordered]@{
         timestamp_utc = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
@@ -113,6 +249,8 @@ function Write-BuildManifest {
         exe_sha256 = (Get-FileSha256OrNull -Path $exePath)
         runtime_json_sha256 = (Get-FileSha256OrNull -Path $runtimePath)
         readme_release_sha256 = (Get-FileSha256OrNull -Path $readmePath)
+        portable_zip_path = $zipPath
+        portable_zip_sha256 = (Get-FileSha256OrNull -Path $zipPath)
     }
 
     $entry | ConvertTo-Json -Compress | Add-Content -Path $manifestPath -Encoding UTF8
@@ -139,7 +277,8 @@ if (Test-Path -LiteralPath $OutDir) {
 }
 New-Item -ItemType Directory -Force -Path $OutDir | Out-Null
 
-# 繧ｨ繝ｳ繝峨Θ繝ｼ繧ｶ繝ｼ蜷代￠繝昴・繧ｿ繝悶Ν驟榊ｸ・・ self-contained 謗ｨ螂ｨ・・NET 繝ｩ繝ｳ繧ｿ繧､繝譛ｪ蟆主・PC縺ｧ繧ょｮ溯｡悟庄・・& dotnet publish $UiProject `
+# エンドユーザー向けポータブル配布: self-contained 推奨（.NET ランタイム未導入PCでも実行可能）
+& dotnet publish $UiProject `
     --configuration Release `
     --runtime win-x64 `
     --self-contained true `
@@ -153,6 +292,10 @@ if ($LASTEXITCODE -ne 0) {
     Write-Error ("dotnet publish failed with exit code " + $LASTEXITCODE)
 }
 
+Write-PdfHandlerRuntimeJson -OutputDir $OutDir -TargetEnvironment $TargetEnvironment
+Write-ReadmeReleaseTxt -OutputDir $OutDir -Version $Version -TargetEnvironment $TargetEnvironment -InformationalVersion $InformationalVersion
+$zipArtifact = Write-PortableReleaseZip -SourceDir $OutDir -Version $Version
+
 $manifestPath = Write-BuildManifest `
     -RepoRoot $ProjectRoot `
     -TargetEnvironment $TargetEnvironment `
@@ -163,6 +306,7 @@ $manifestPath = Write-BuildManifest `
 
 Write-Host ""
 Write-Host ("Done: " + $OutDir) -ForegroundColor Green
+Write-Host ("ZIP:  " + $zipArtifact.ZipPath) -ForegroundColor Green
 Write-Host ("Manifest: " + $manifestPath) -ForegroundColor DarkGray
 Write-Host ("Next: .\\tools\\build-release.ps1 -TargetEnvironment " + $TargetEnvironment) -ForegroundColor DarkGray
 Write-Host ""

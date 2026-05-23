@@ -397,9 +397,13 @@ public class LicenseService : ILicenseService, IDisposable
     /// </summary>
     public async Task<bool> DeactivateDeviceAsync(string activationId)
     {
+        LastLicenseErrorMessage = null;
         var licenseKey = GetNormalizedLicenseKeyForApi();
         if (string.IsNullOrEmpty(licenseKey) || string.IsNullOrEmpty(activationId))
+        {
+            LastLicenseErrorMessage = "ライセンス情報またはデバイスIDが不足しています。";
             return false;
+        }
 
         try
         {
@@ -411,19 +415,62 @@ public class LicenseService : ILicenseService, IDisposable
                 $"{_settings.Supabase.Url}/functions/v1/deactivate-device",
                 content);
 
-            if (!response.IsSuccessStatusCode)
-                return false;
-
             var responseJson = await response.Content.ReadAsStringAsync();
+
+            if (!response.IsSuccessStatusCode)
+            {
+                LastLicenseErrorMessage = TryParseEdgeErrorMessage(responseJson)
+                    ?? "解除に失敗しました。しばらくしてから再度お試しください。";
+                System.Diagnostics.Debug.WriteLine(
+                    $"DeactivateDeviceAsync HTTP {(int)response.StatusCode}: {LastLicenseErrorMessage}");
+                return false;
+            }
+
             var result = JsonSerializer.Deserialize<DeactivateDeviceResponse>(responseJson,
                 new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-            return result?.Success == true;
+            if (result?.Success == true)
+                return true;
+
+            LastLicenseErrorMessage = TryParseEdgeErrorMessage(responseJson)
+                ?? "解除に失敗しました。";
+            return false;
         }
         catch (Exception ex)
         {
+            LastLicenseErrorMessage = "解除に失敗しました。ネットワーク接続を確認してください。";
             System.Diagnostics.Debug.WriteLine($"DeactivateDeviceAsync エラー: {ex.Message}");
             return false;
         }
+    }
+
+    private static string? TryParseEdgeErrorMessage(string responseJson)
+    {
+        if (string.IsNullOrWhiteSpace(responseJson))
+            return null;
+
+        try
+        {
+            using var doc = JsonDocument.Parse(responseJson);
+            if (doc.RootElement.TryGetProperty("error", out var errorProp))
+            {
+                var msg = errorProp.GetString();
+                if (!string.IsNullOrWhiteSpace(msg))
+                    return msg;
+            }
+
+            if (doc.RootElement.TryGetProperty("errorMessage", out var errorMessageProp))
+            {
+                var msg = errorMessageProp.GetString();
+                if (!string.IsNullOrWhiteSpace(msg))
+                    return msg;
+            }
+        }
+        catch (JsonException)
+        {
+            // ignore
+        }
+
+        return null;
     }
 
     /// <summary>

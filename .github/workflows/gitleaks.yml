@@ -1,0 +1,26 @@
+# QM 2.2 §3.2 / §4 Q4・G-5: リポジトリへの秘密情報混入の自動検知
+# 詳細: legals/security-compliance/.../QM_2_2_SECURE_DEVELOPMENT.md §3.2
+name: Secret scan (gitleaks)
+
+on:
+  pull_request:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  gitleaks:
+    name: gitleaks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

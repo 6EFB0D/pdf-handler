@@ -21,6 +21,7 @@ public partial class LicenseDialog : Window
     private readonly IPaymentService _paymentService;
     private readonly AppSettings _appSettings;
     private readonly ILicenseService _licenseService;
+    private readonly ISupabaseConnectionTestService _connectionTestService;
 
     public LicenseDialog()
     {
@@ -29,8 +30,28 @@ public partial class LicenseDialog : Window
         _paymentService = app.GetService<IPaymentService>();
         _appSettings = app.GetService<AppSettings>();
         _licenseService = app.GetService<ILicenseService>();
+        _connectionTestService = app.GetService<ISupabaseConnectionTestService>();
 
+        ApplyEnvironmentChrome();
         LoadLicenseInfo();
+    }
+
+    private void ApplyEnvironmentChrome()
+    {
+        Title = "ライセンス" + AppEnvironmentResolver.GetWindowTitleSuffix(_appSettings);
+
+        if (!_appSettings.IsDevEnvironment)
+            return;
+
+        if (DevEnvironmentBadge != null)
+            DevEnvironmentBadge.Visibility = Visibility.Visible;
+
+        if (DevEnvironmentDetailText != null)
+        {
+            DevEnvironmentDetailText.Text =
+                "開発環境 (DEV) — " + AppEnvironmentResolver.GetConnectionLabel(_appSettings);
+            DevEnvironmentDetailText.Visibility = Visibility.Visible;
+        }
     }
 
     private void LoadLicenseInfo()
@@ -72,6 +93,7 @@ public partial class LicenseDialog : Window
 
             UpdateHeaderMessage();
             UpdatePurchasePanels(isPurchased);
+            UpdateConnectionTestVisibility(isPurchased);
         }
         catch (Exception ex)
         {
@@ -94,6 +116,24 @@ public partial class LicenseDialog : Window
                 : !_licenseService.IsLicenseValid()
                     ? "試用期間が終了しました。ライセンスを購入して続けてご利用ください。"
                     : "ライセンスを購入して全機能をご利用ください。";
+    }
+
+    /// <summary>
+    /// 購入済みかつライセンス有効なら接続確認は不要（購入前向け）。
+    /// </summary>
+    private void UpdateConnectionTestVisibility(bool isPurchased)
+    {
+        if (ConnectionTestPanel == null)
+            return;
+
+        var show = !(isPurchased && _licenseService.IsLicenseValid());
+        ConnectionTestPanel.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
+
+        if (!show && ConnectionTestResultText != null)
+        {
+            ConnectionTestResultText.Text = string.Empty;
+            ConnectionTestResultText.Visibility = Visibility.Collapsed;
+        }
     }
 
     private void UpdatePurchasePanels(bool isPurchased)
@@ -226,6 +266,37 @@ public partial class LicenseDialog : Window
             }
         }
         catch (Exception ex) { MessageBox.Show($"{title}の表示中にエラーが発生しました。\n\n{ex.Message}", "エラー", MessageBoxButton.OK, MessageBoxImage.Error); }
+    }
+
+    private async void TestConnectionButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (TestConnectionButton == null || ConnectionTestResultText == null)
+            return;
+
+        TestConnectionButton.IsEnabled = false;
+        ConnectionTestResultText.Visibility = Visibility.Visible;
+        ConnectionTestResultText.Text = "接続を確認しています…";
+        ConnectionTestResultText.Foreground = System.Windows.Media.Brushes.Gray;
+
+        try
+        {
+            var result = await _connectionTestService.TestConnectionAsync();
+            ConnectionTestResultText.Text = result.UserMessage;
+            ConnectionTestResultText.Foreground = result.IsSuccess
+                ? System.Windows.Media.Brushes.DarkGreen
+                : System.Windows.Media.Brushes.DarkRed;
+        }
+        catch (Exception ex)
+        {
+            DebugLogger.LogError(ErrorCodes.NetworkConnectionFailed, "接続確認エラー", ex);
+            ConnectionTestResultText.Text =
+                "接続確認中に問題が発生しました。インターネット接続をご確認のうえ、再度お試しください。";
+            ConnectionTestResultText.Foreground = System.Windows.Media.Brushes.DarkRed;
+        }
+        finally
+        {
+            TestConnectionButton.IsEnabled = true;
+        }
     }
 
     private void CloseButton_Click(object sender, RoutedEventArgs e) => Close();

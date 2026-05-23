@@ -106,11 +106,26 @@ serve(async (req) => {
       );
     }
 
-    // デアクティベート
-    const { error: updateError } = await supabase
+    // デアクティベート（deactivated_at は migration 17 適用後。未適用 DB では is_active のみ更新）
+    const deactivatedAt = new Date().toISOString();
+    let { error: updateError } = await supabase
       .from("license_activations")
-      .update({ is_active: false, deactivated_at: new Date().toISOString() })
+      .update({ is_active: false, deactivated_at: deactivatedAt })
       .eq("id", activationId);
+
+    if (
+      updateError &&
+      (updateError.message?.includes("deactivated_at") ||
+        updateError.code === "42703" ||
+        updateError.code === "PGRST204")
+    ) {
+      console.warn("deactivate-device: deactivated_at unavailable, retrying is_active only:", updateError.message);
+      const retry = await supabase
+        .from("license_activations")
+        .update({ is_active: false })
+        .eq("id", activationId);
+      updateError = retry.error;
+    }
 
     if (updateError) {
       console.error("deactivate-device update error:", updateError);

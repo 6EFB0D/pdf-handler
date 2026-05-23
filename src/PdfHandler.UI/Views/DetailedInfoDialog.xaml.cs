@@ -6,6 +6,7 @@ using System;
 using System.Reflection;
 using System.Windows;
 using System.IO;
+using PdfHandler.Infrastructure.Configuration;
 
 namespace PdfHandler.UI.Views
 {
@@ -25,6 +26,20 @@ namespace PdfHandler.UI.Views
                 var version = assembly.GetName().Version;
                 var location = assembly.Location;
                 
+                var connectionSection = "";
+                if (Application.Current is App app)
+                {
+                    var settings = app.GetService<AppSettings>();
+                    connectionSection = $@"
+接続環境
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+{AppEnvironmentResolver.GetConnectionLabel(settings)}
+Supabase URL: {settings.Supabase.Url}
+";
+
+                }
+
                 var info = $@"バージョン情報
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -32,7 +47,7 @@ namespace PdfHandler.UI.Views
 内部バージョン: {version?.ToString() ?? "不明"}
 ビルド番号: {version?.Revision ?? 0}
 リリース日: {(string.IsNullOrEmpty(location) ? "不明" : File.GetLastWriteTime(location).ToString("yyyy年MM月dd日"))}
-
+{connectionSection}
 システム情報
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 

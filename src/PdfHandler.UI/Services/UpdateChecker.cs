@@ -65,6 +65,7 @@ namespace PdfHandler.UI.Services
                     IsUpdateAvailable = latestVersion > currentVersion,
                     CurrentVersion = FormatVersion(currentVersion),
                     LatestVersion = FormatVersion(latestVersion),
+                    LatestTagName = release.TagName?.Trim() ?? string.Empty,
                     ReleaseNotes = release.Body,
                     DownloadUrl = release.HtmlUrl,
                     ReleaseDate = release.PublishedAt,

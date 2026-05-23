@@ -94,6 +94,9 @@
             <MenuItem Header="ヘルプ(_H)">
                 <MenuItem Header="取扱説明書(_M)" Click="ShowUserManual_Click" InputGestureText="F1"/>
                 <Separator/>
+                <MenuItem Header="更新の確認(_U)..." Click="CheckForUpdates_Click"/>
+                <MenuItem Header="起動時の更新通知を再び表示" Click="ResetUpdateNotification_Click"/>
+                <Separator/>
                 <MenuItem x:Name="LicenseMenuItem" Header="ライセンス(_L)..." Click="License_Click"/>
                 <MenuItem Header="バージョン情報(_A)" Click="About_Click"/>
                 <Separator/>
@@ -184,12 +187,14 @@
             <Border Grid.Column="0" BorderBrush="#CCCCCC" BorderThickness="1" Margin="5" ToolTip="PDFをドラッグ&amp;ドロップでフォルダにコピー">
                 <TreeView x:Name="FolderTreeView"
                           SelectedItemChanged="TreeView_SelectedItemChanged"
-                          ContextMenuOpening="FolderTreeView_ContextMenuOpening">
+                          ContextMenuOpening="FolderTreeView_ContextMenuOpening"
+                          PreviewDragOver="FolderTreeView_PreviewDragOver">
                     <TreeView.ItemContainerStyle>
                         <Style TargetType="TreeViewItem">
                             <Setter Property="AllowDrop" Value="True"/>
                             <EventSetter Event="Expanded" Handler="TreeViewItem_Expanded"/>
                             <EventSetter Event="PreviewDragOver" Handler="FolderTreeViewItem_DragOver"/>
+                            <EventSetter Event="PreviewDragLeave" Handler="FolderTreeViewItem_PreviewDragLeave"/>
                             <EventSetter Event="PreviewDrop" Handler="FolderTreeViewItem_Drop"/>
                         </Style>
                     </TreeView.ItemContainerStyle>
@@ -489,6 +494,14 @@
 
         <!-- ステータスバー -->
         <StatusBar Grid.Row="3" Height="25" Background="#F0F0F0">
+            <StatusBarItem x:Name="DevEnvironmentStatusItem" Visibility="Collapsed">
+                <Border Background="#FFF3CD" BorderBrush="#FFC107" BorderThickness="1" CornerRadius="2" Padding="6,1" Margin="0,0,4,0">
+                    <TextBlock x:Name="DevEnvironmentStatusText"
+                               Text="開発環境 (DEV)"
+                               FontSize="11" FontWeight="SemiBold" Foreground="#856404"/>
+                </Border>
+            </StatusBarItem>
+            <Separator x:Name="DevEnvironmentStatusSeparator" Visibility="Collapsed"/>
             <StatusBarItem>
                 <TextBlock Text="{Binding StatusText}"/>
             </StatusBarItem>

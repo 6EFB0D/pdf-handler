@@ -3,9 +3,11 @@
 // Licensed under the MIT License. See LICENSE file in the project root for full license information.
 
 using PdfHandler.UI.ViewModels;
+using PdfHandler.UI.Services;
 using PdfHandler.Infrastructure.Configuration;
 using PdfHandler.Infrastructure.Helpers;
 using System;
+using System.Threading.Tasks;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -14,6 +16,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Threading;
 using PdfHandler.Core.Models;
 using System.Collections.ObjectModel;
 using PdfHandler.Core.Interfaces;
@@ -37,12 +40,19 @@ public partial class MainWindow : Window
     private bool _fileListRightDragStarted;
     private List<string> _pendingDropSourcePaths = new();
     private string _pendingDropTargetPath = string.Empty;
+    private TreeViewItem? _folderTreeDropHighlightItem;
+    private Brush? _folderTreeDropHighlightPreviousBackground;
+
+    private static readonly Brush FolderTreeDropTargetBrush = CreateFrozenBrush(214, 235, 255);
 
     public MainWindow(MainWindowViewModel viewModel)
     {
         InitializeComponent();
         DataContext = viewModel;
         _viewModel = viewModel;
+
+        if (Application.Current is App app)
+            ApplyEnvironmentChrome(app.GetService<AppSettings>());
 
         // ViewModelのRootFolderプロパティ変更を監視
         _viewModel.PropertyChanged += ViewModel_PropertyChanged;
@@ -64,6 +74,125 @@ public partial class MainWindow : Window
 
     private void MainWindow_Loaded(object sender, RoutedEventArgs e)
     {
+        _ = TryShowStartupUpdateNotificationAsync();
+    }
+
+    private async Task TryShowStartupUpdateNotificationAsync()
+    {
+        try
+        {
+            var store = new UpdateNotificationStore();
+            var checker = new UpdateChecker();
+            var updateInfo = await checker.CheckForUpdatesAsync();
+
+            if (updateInfo.HasError || !updateInfo.IsUpdateAvailable)
+                return;
+
+            var tag = string.IsNullOrWhiteSpace(updateInfo.LatestTagName)
+                ? "v" + updateInfo.LatestVersion
+                : updateInfo.LatestTagName;
+
+            if (!store.ShouldShowStartupNotification(tag))
+                return;
+
+            var dialog = new UpdateAvailableNotificationDialog(updateInfo)
+            {
+                Owner = this
+            };
+            dialog.ShowDialog();
+
+            if (dialog.SuppressFutureNotifications)
+                store.SetSuppressedThroughTag(tag);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Startup update notification skipped: {ex.Message}");
+        }
+    }
+
+    private void CheckForUpdates_Click(object sender, RoutedEventArgs e)
+    {
+        var aboutDialog = new AboutDialog
+        {
+            Owner = this
+        };
+        aboutDialog.ShowDialog();
+    }
+
+    private void ResetUpdateNotification_Click(object sender, RoutedEventArgs e)
+    {
+        _ = ResetUpdateNotificationAsync();
+    }
+
+    private async Task ResetUpdateNotificationAsync()
+    {
+        try
+        {
+            var store = new UpdateNotificationStore();
+            var checker = new UpdateChecker();
+            var updateInfo = await checker.CheckForUpdatesAsync();
+
+            if (updateInfo.HasError)
+            {
+                MessageBox.Show(
+                    this,
+                    "更新情報を取得できなかったため、抑止の解除のみ行いました。\n次回起動時から、新しいバージョンがあればお知らせします。",
+                    "更新通知",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+                store.ClearSuppression();
+                return;
+            }
+
+            var latestTag = string.IsNullOrWhiteSpace(updateInfo.LatestTagName)
+                ? "v" + updateInfo.LatestVersion
+                : updateInfo.LatestTagName;
+
+            if (updateInfo.IsUpdateAvailable)
+            {
+                store.ReEnableNotificationsThroughCurrentLatest(latestTag);
+                MessageBox.Show(
+                    this,
+                    "起動時の更新通知を再有効化しました。\n現在の公開版（" + latestTag + "）については、起動時のお知らせは出しません。\nそれより新しいバージョンが公開されたときにお知らせします。\n\n今すぐ確認する場合は「ヘルプ」→「更新の確認」をご利用ください。",
+                    "更新通知",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+            }
+            else
+            {
+                store.ReEnableNotificationsThroughCurrentLatest(latestTag);
+                MessageBox.Show(
+                    this,
+                    "起動時の更新通知を再有効化しました。\n現在お使いのバージョンは最新です。新しいバージョンが公開されたときにお知らせします。",
+                    "更新通知",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Reset update notification: {ex.Message}");
+            new UpdateNotificationStore().ClearSuppression();
+            MessageBox.Show(
+                this,
+                "起動時の更新通知の抑止を解除しました。\n次回起動時から、新しいバージョンがあれば再度お知らせします。",
+                "更新通知",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
+        }
+    }
+
+    private void ApplyEnvironmentChrome(AppSettings settings)
+    {
+        Title = "PDFハンドラ" + AppEnvironmentResolver.GetWindowTitleSuffix(settings);
+
+        if (!settings.IsDevEnvironment)
+            return;
+
+        DevEnvironmentStatusItem.Visibility = Visibility.Visible;
+        DevEnvironmentStatusSeparator.Visibility = Visibility.Visible;
+        DevEnvironmentStatusText.Text =
+            $"開発環境 (DEV) — {AppEnvironmentResolver.TryGetProjectRef(settings.Supabase.Url)} / 本番ライセンスは PROD ビルドで認証";
     }
 
     private void MainWindow_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
@@ -282,76 +411,214 @@ public partial class MainWindow : Window
         }
     }
 
+    private void FolderTreeView_PreviewDragOver(object sender, DragEventArgs e)
+    {
+        if (!IsFolderTreeDragData(e.Data))
+            return;
+
+        var position = e.GetPosition(FolderTreeView);
+        var hit = VisualTreeHelper.HitTest(FolderTreeView, position);
+        if (hit?.VisualHit == null || GetInnermostTreeViewItem(hit.VisualHit) == null)
+            ClearFolderTreeDropHighlight();
+    }
+
     private void FolderTreeViewItem_DragOver(object sender, DragEventArgs e)
     {
-        if (sender is not System.Windows.Controls.TreeViewItem item || item.DataContext is not FolderNode node)
+        if (!TryGetInnermostFolderTreeItem(sender, e, out var item, out var node))
             return;
-        if (string.IsNullOrEmpty(node.Path) || !Directory.Exists(node.Path))
+
+        if (!IsFolderTreeDragData(e.Data))
             return;
-        if (e.Data.GetDataPresent("PdfFile") || e.Data.GetDataPresent("PdfFiles") || e.Data.GetDataPresent(DataFormats.FileDrop))
+
+        if (node == null || !IsValidFolderDropTarget(node))
         {
-            e.Effects = DragDropEffects.Copy;
+            ClearFolderTreeDropHighlight();
+            e.Effects = DragDropEffects.None;
             e.Handled = true;
+            return;
         }
+
+        e.Effects = DragDropEffects.Copy;
+        SetFolderTreeDropHighlight(item);
+        e.Handled = true;
+    }
+
+    private void FolderTreeViewItem_PreviewDragLeave(object sender, DragEventArgs e)
+    {
+        if (sender is not TreeViewItem item || item != _folderTreeDropHighlightItem)
+            return;
+
+        var leaveItem = item;
+        leaveItem.Dispatcher.BeginInvoke(() =>
+        {
+            if (_folderTreeDropHighlightItem != leaveItem)
+                return;
+
+            var position = Mouse.GetPosition(leaveItem);
+            if (position.X < 0 || position.Y < 0
+                || position.X > leaveItem.ActualWidth || position.Y > leaveItem.ActualHeight)
+            {
+                ClearFolderTreeDropHighlight();
+            }
+        }, DispatcherPriority.Input);
     }
 
     private void FolderTreeViewItem_Drop(object sender, DragEventArgs e)
     {
-        if (sender is not System.Windows.Controls.TreeViewItem item || item.DataContext is not FolderNode node)
-            return;
-        if (string.IsNullOrEmpty(node.Path) || !Directory.Exists(node.Path))
-            return;
+        try
+        {
+            if (!TryGetInnermostFolderTreeItem(sender, e, out var item, out var node))
+                return;
 
+            e.Handled = true;
+
+            if (node == null || !IsValidFolderDropTarget(node))
+                return;
+
+            var sourcePaths = CollectFolderTreeDropSourcePaths(e.Data);
+            if (sourcePaths.Count == 0 || _viewModel == null)
+                return;
+
+            if (e.Data.GetDataPresent("ShowCopyMoveMenu"))
+            {
+                _pendingDropSourcePaths = new List<string>(sourcePaths);
+                _pendingDropTargetPath = node.Path;
+
+                var menu = new ContextMenu();
+                var copyItem = new MenuItem { Header = "ここにコピー" };
+                copyItem.Click += async (_, _) =>
+                {
+                    if (_pendingDropSourcePaths.Count > 0)
+                        await _viewModel.CopyFilesToFolderAsync(_pendingDropSourcePaths, _pendingDropTargetPath);
+                };
+                var moveItem = new MenuItem { Header = "ここに移動" };
+                moveItem.Click += async (_, _) =>
+                {
+                    if (_pendingDropSourcePaths.Count > 0)
+                        await _viewModel.MoveFilesToFolderAsync(_pendingDropSourcePaths, _pendingDropTargetPath);
+                };
+                menu.Items.Add(copyItem);
+                menu.Items.Add(moveItem);
+                menu.PlacementTarget = item;
+                menu.Placement = System.Windows.Controls.Primitives.PlacementMode.MousePoint;
+                menu.IsOpen = true;
+            }
+            else
+            {
+                _ = _viewModel.CopyFilesToFolderAsync(sourcePaths, node.Path);
+            }
+        }
+        finally
+        {
+            ClearFolderTreeDropHighlight();
+        }
+    }
+
+    private static bool IsFolderTreeDragData(IDataObject data) =>
+        data.GetDataPresent("PdfFile")
+        || data.GetDataPresent("PdfFiles")
+        || data.GetDataPresent(DataFormats.FileDrop);
+
+    private static bool IsValidFolderDropTarget(FolderNode node) =>
+        !string.IsNullOrEmpty(node.Path) && Directory.Exists(node.Path);
+
+    private static TreeViewItem? GetInnermostTreeViewItem(DependencyObject? source)
+    {
+        for (var current = source; current != null; current = VisualTreeHelper.GetParent(current))
+        {
+            if (current is TreeViewItem item)
+                return item;
+        }
+
+        return null;
+    }
+
+    private static bool TryGetInnermostFolderTreeItem(
+        object sender,
+        DragEventArgs e,
+        out TreeViewItem targetItem,
+        out FolderNode? folderNode)
+    {
+        targetItem = null!;
+        folderNode = null;
+
+        if (sender is not TreeViewItem senderItem)
+            return false;
+
+        var innermost = GetInnermostTreeViewItem(e.OriginalSource as DependencyObject);
+        if (innermost == null || !ReferenceEquals(innermost, senderItem))
+            return false;
+
+        targetItem = innermost;
+        if (innermost.DataContext is FolderNode node)
+            folderNode = node;
+
+        return true;
+    }
+
+    private static List<string> CollectFolderTreeDropSourcePaths(IDataObject data)
+    {
         var sourcePaths = new List<string>();
-        if (e.Data.GetDataPresent("PdfFiles"))
+
+        if (data.GetDataPresent("PdfFiles"))
         {
-            var paths = e.Data.GetData("PdfFiles") as string[];
-            if (paths != null) sourcePaths.AddRange(paths);
+            var paths = data.GetData("PdfFiles") as string[];
+            if (paths != null)
+                sourcePaths.AddRange(paths);
         }
-        else if (e.Data.GetDataPresent("PdfFile"))
+        else if (data.GetDataPresent("PdfFile"))
         {
-            var path = e.Data.GetData("PdfFile") as string;
-            if (!string.IsNullOrEmpty(path)) sourcePaths.Add(path);
+            var path = data.GetData("PdfFile") as string;
+            if (!string.IsNullOrEmpty(path))
+                sourcePaths.Add(path);
         }
-        else if (e.Data.GetDataPresent(DataFormats.FileDrop))
+        else if (data.GetDataPresent(DataFormats.FileDrop))
         {
-            var files = (string[]?)e.Data.GetData(DataFormats.FileDrop);
+            var files = (string[]?)data.GetData(DataFormats.FileDrop);
             if (files != null)
             {
-                foreach (var f in files)
-                    if (File.Exists(f)) sourcePaths.Add(f);
+                foreach (var file in files)
+                {
+                    if (File.Exists(file))
+                        sourcePaths.Add(file);
+                }
             }
         }
 
-        if (sourcePaths.Count == 0 || _viewModel == null) { e.Handled = true; return; }
+        return sourcePaths;
+    }
 
-        if (e.Data.GetDataPresent("ShowCopyMoveMenu"))
-        {
-            _pendingDropSourcePaths = new List<string>(sourcePaths);
-            _pendingDropTargetPath = node.Path;
+    private void SetFolderTreeDropHighlight(TreeViewItem item)
+    {
+        if (ReferenceEquals(_folderTreeDropHighlightItem, item))
+            return;
 
-            var menu = new ContextMenu();
-            var copyItem = new MenuItem { Header = "ここにコピー" };
-            copyItem.Click += async (_, _) =>
-            {
-                if (_pendingDropSourcePaths.Count > 0) await _viewModel.CopyFilesToFolderAsync(_pendingDropSourcePaths, _pendingDropTargetPath);
-            };
-            var moveItem = new MenuItem { Header = "ここに移動" };
-            moveItem.Click += async (_, _) =>
-            {
-                if (_pendingDropSourcePaths.Count > 0) await _viewModel.MoveFilesToFolderAsync(_pendingDropSourcePaths, _pendingDropTargetPath);
-            };
-            menu.Items.Add(copyItem);
-            menu.Items.Add(moveItem);
-            menu.PlacementTarget = item;
-            menu.Placement = System.Windows.Controls.Primitives.PlacementMode.MousePoint;
-            menu.IsOpen = true;
-        }
+        ClearFolderTreeDropHighlight();
+
+        _folderTreeDropHighlightItem = item;
+        _folderTreeDropHighlightPreviousBackground = item.Background;
+        item.Background = FolderTreeDropTargetBrush;
+    }
+
+    private void ClearFolderTreeDropHighlight()
+    {
+        if (_folderTreeDropHighlightItem == null)
+            return;
+
+        if (_folderTreeDropHighlightPreviousBackground != null)
+            _folderTreeDropHighlightItem.Background = _folderTreeDropHighlightPreviousBackground;
         else
-        {
-            _ = _viewModel.CopyFilesToFolderAsync(sourcePaths, node.Path);
-        }
-        e.Handled = true;
+            _folderTreeDropHighlightItem.ClearValue(TreeViewItem.BackgroundProperty);
+
+        _folderTreeDropHighlightItem = null;
+        _folderTreeDropHighlightPreviousBackground = null;
+    }
+
+    private static SolidColorBrush CreateFrozenBrush(byte r, byte g, byte b)
+    {
+        var brush = new SolidColorBrush(Color.FromRgb(r, g, b));
+        brush.Freeze();
+        return brush;
     }
 
     private void TreeView_SelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e)

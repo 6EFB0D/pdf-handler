@@ -36,6 +36,10 @@
         <StackPanel Grid.Row="1" HorizontalAlignment="Center" Margin="0,0,0,4">
             <TextBlock x:Name="VersionTextBlock" Text="バージョン 1.1.0"
                        FontSize="15" HorizontalAlignment="Center" Foreground="#555555"/>
+            <TextBlock x:Name="EnvironmentTextBlock"
+                       Visibility="Collapsed"
+                       FontSize="12" HorizontalAlignment="Center" Margin="0,4,0,0"
+                       Foreground="#B45309" FontWeight="SemiBold"/>
             <TextBlock x:Name="UpdateStatusTextBlock" Text="🔄 更新を確認中..."
                        FontSize="12" HorizontalAlignment="Center" Margin="0,4,0,0"
                        Foreground="#6C757D"/>

@@ -4,11 +4,15 @@
 import Stripe from "stripe";
 import { createClient } from "@supabase/supabase-js";
 import { generateCompactLicenseKey } from "../_shared/compact-license-key.ts";
+import { maskEmail } from "../_shared/mask-email.ts";
 
 const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
   apiVersion: "2023-10-16",
   httpClient: Stripe.createFetchHttpClient(),
 });
+
+/** Edge（Deno）では既定の検証が Node 互換に依存し、runMicrotasks エラーになりうるため Web Crypto を明示 */
+const stripeWebhookCryptoProvider = Stripe.createSubtleCryptoProvider();
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
@@ -37,7 +41,13 @@ Deno.serve(async (req) => {
 
     let event: Stripe.Event;
     try {
-      event = await stripe.webhooks.constructEventAsync(body, signature, STRIPE_WEBHOOK_SECRET);
+      event = await stripe.webhooks.constructEventAsync(
+        body,
+        signature,
+        STRIPE_WEBHOOK_SECRET,
+        undefined,
+        stripeWebhookCryptoProvider,
+      );
     } catch (err) {
       console.error("Webhook signature verification failed:", err.message);
       return new Response(
@@ -76,7 +86,8 @@ Deno.serve(async (req) => {
       headers: { "Content-Type": "application/json" },
     });
   } catch (error) {
-    console.error("Webhook error:", error.message, error.stack);
+    const stack = Deno.env.get("LOG_VERBOSE") === "true" ? ` ${error.stack}` : "";
+    console.error(`Webhook error: ${error.message}${stack}`);
     return new Response(JSON.stringify({ error: "Internal server error" }), {
       status: 500,
       headers: { "Content-Type": "application/json" },
@@ -235,7 +246,7 @@ function buildErrorNotification(params: {
         <td style="padding:6px 12px;font-family:monospace;font-size:11px">${params.sessionId}</td></tr>
   </table>
   <p style="margin-top:16px">
-    <a href="https://supabase.com/dashboard/project/_/functions" style="color:#1565c0">
+    <a href="https://supabase.com/dashboard/project/yzmjuotvkxcfnsgleyxl/functions" style="color:#1565c0">
       → Supabase Edge Function ログを確認
     </a>
   </p>
@@ -427,12 +438,12 @@ async function handleCheckoutCompleted(supabase: any, session: Stripe.Checkout.S
         customerCompany,
       });
       emailSent = true;
-      console.log(`License email sent to ${userEmail}`);
+      console.log(`License email sent email_mask=${maskEmail(userEmail)} license_id=${license.id} session=${stripeCheckoutSessionId} app_id=${appId}`);
     } catch (emailErr) {
       console.error("License email send failed:", emailErr);
     }
   } else {
-    console.log(`License created: ${licenseKey} for ${userEmail || "(no email)"}`);
+    console.log(`License created (no email) license_id=${license.id} session=${stripeCheckoutSessionId} email_mask=${userEmail ? maskEmail(userEmail) : "(none)"} app_id=${appId}`);
   }
 
   // ✅ 購入完了通知をサポートへ送信
@@ -541,8 +552,8 @@ async function sendLicenseEmail(
   <p><strong>プラン:</strong> Standard版（買い切り）</p>
 
   <p style="margin-top:16px"><strong>ライセンスキー:</strong></p>
-  <p style="font-family:monospace;background:#f5f5f5;padding:14px;border-radius:6px;
-            font-size:13px;word-break:break-all;border-left:4px solid #3b82f6">${licenseKey}</p>
+  <p style="font-family:monospace;background:#f5f5f5;padding:16px;border-radius:6px;
+            font-size:16px;line-height:1.5;word-break:break-all;border-left:4px solid #3b82f6">${licenseKey}</p>
 
   <div style="margin:20px 0;padding:14px 16px;
               background:#fff8e1;border-left:4px solid #f59e0b;

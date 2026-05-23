@@ -27,6 +27,11 @@ namespace PdfHandler.UI.Models
         public string LatestVersion { get; set; } = string.Empty;
 
         /// <summary>
+        /// GitHub リリースのタグ名（例: v1.1.3）。抑止状態の保存に使用。
+        /// </summary>
+        public string LatestTagName { get; set; } = string.Empty;
+
+        /// <summary>
         /// リリースノート（更新内容）
         /// </summary>
         public string ReleaseNotes { get; set; } = string.Empty;

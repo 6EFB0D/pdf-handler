@@ -116,12 +116,12 @@ serve(async (req) => {
       lastVerificationDate: a.last_verification_date,
     }));
 
-    const deviceLimit = 1;
+    const DEVICE_LIMIT = 3;
 
     return new Response(
       JSON.stringify({
         activations: result,
-        deviceLimit,
+        deviceLimit: DEVICE_LIMIT,
         deviceCount: result.length,
       }),
       { headers: corsHeaders }

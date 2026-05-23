@@ -33,9 +33,9 @@ const JSON_HEADERS = { "Content-Type": "application/json" };
 
 // ─── メール本文（複数キー対応）────────────────────────────────────────────────
 function buildKeyBlock(key: string): string {
-  return `<div style="background:#f8f8f8;border-left:4px solid #4CAF50;padding:12px 16px;
-                      margin:8px 0;font-family:monospace;font-size:12px;
-                      word-break:break-all;line-height:1.8">${key}</div>`;
+  return `<div style="background:#f8f8f8;border-left:4px solid #4CAF50;padding:14px 16px;
+                      margin:8px 0;font-family:monospace;font-size:16px;
+                      word-break:break-all;line-height:1.5">${key}</div>`;
 }
 
 function buildCustomerEmail(

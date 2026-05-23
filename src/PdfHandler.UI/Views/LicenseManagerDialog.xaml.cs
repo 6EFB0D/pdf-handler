@@ -209,7 +209,11 @@ public partial class LicenseManagerDialog : Window
         }
         else
         {
-            MessageBox.Show("解除に失敗しました。ネットワーク接続を確認してください。", "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
+            var detail = _licenseService.LastLicenseErrorMessage;
+            var message = string.IsNullOrWhiteSpace(detail)
+                ? "解除に失敗しました。ネットワーク接続を確認してください。"
+                : $"解除に失敗しました。\n\n{detail}";
+            MessageBox.Show(message, "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 

@@ -14,6 +14,7 @@
 // stripe-node 非使用: fetch + 公式 REST API を使用し Deno / esm の不整合を回避
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { maskEmail } from "../_shared/mask-email.ts";
 
 interface RequestBody {
   plan?: string;
@@ -100,11 +101,6 @@ function isValidEmail(s: string): boolean {
 function readCustomerEmail(payload: Record<string, unknown>): string {
   const raw = payload["customerEmail"] ?? payload["CustomerEmail"];
   return typeof raw === "string" ? raw.trim() : "";
-}
-
-function maskEmail(email: string): string {
-  const at = email.indexOf("@");
-  return at > 0 ? `${email.slice(0, 1)}***${email.slice(at)}` : "***";
 }
 
 // ---------------------------------------------------------------------------

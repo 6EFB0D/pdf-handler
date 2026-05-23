@@ -10,6 +10,19 @@ namespace PdfHandler.Infrastructure.Configuration;
 public class AppSettings
 {
     /// <summary>
+    /// 接続環境（DEV / PROD）。<see cref="AppEnvironmentResolver.FinalizeTargetEnvironment"/> で確定。
+    /// </summary>
+    public string TargetEnvironment { get; set; } = AppEnvironmentResolver.Dev;
+
+    /// <summary>開発用 Supabase（DEV）に接続しているか。</summary>
+    public bool IsDevEnvironment =>
+        string.Equals(TargetEnvironment, AppEnvironmentResolver.Dev, StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>本番用 Supabase（PROD）に接続しているか。</summary>
+    public bool IsProdEnvironment =>
+        string.Equals(TargetEnvironment, AppEnvironmentResolver.Prod, StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
     /// Supabase設定
     /// </summary>
     public SupabaseSettings Supabase { get; set; } = new();
@@ -38,7 +51,8 @@ public class AppSettings
     public string SurveyFormUrl { get; set; } = "https://docs.google.com/forms/d/1NpXzk1kyUn2LhUzQhhMHq_tnT1oOGAsv561L-7nMfos/viewform";
 
     /// <summary>
-    /// HMACオフライン検証用の秘密鍵。環境変数 LICENSE_SECRET_KEY で設定。未設定だとオフライン検証不可。
+    /// HMACオフライン検証用の秘密鍵（license-code-specification 準拠）
+    /// 環境変数 LICENSE_SECRET_KEY で設定。未設定だとオフライン検証不可。
     /// </summary>
     public string LicenseSecretKey { get; set; } = "";
 }
@@ -49,9 +63,9 @@ public class AppSettings
 public class SupabaseSettings
 {
     /// <summary>
-    /// Supabase URL。運用環境では <c>PdfHandler.runtime.json</c> または環境変数 <c>SUPABASE_URL</c>。既定値はプレースホルダのみ。
+    /// Supabase URL
     /// </summary>
-    public string Url { get; set; } = "https://YOUR_PROJECT.supabase.co";
+    public string Url { get; set; } = string.Empty;
 
     /// <summary>
     /// Supabase Anon Key（公開キー）

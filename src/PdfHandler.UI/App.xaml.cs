@@ -112,7 +112,7 @@ public partial class App : Application
 
         ApplyRuntimeSettings(appSettings);
         
-        // Supabase設定（環境変数または PdfHandler.runtime.json。秘密鍵はリポジトリに含めない）
+        // Supabase（環境変数または同梱 PdfHandler.runtime.json。リポジトリに秘密を含めない）
         appSettings.Supabase.Url = Environment.GetEnvironmentVariable("SUPABASE_URL")
             ?? appSettings.Supabase.Url;
         appSettings.Supabase.AnonKey = Environment.GetEnvironmentVariable("SUPABASE_ANON_KEY")
@@ -121,7 +121,7 @@ public partial class App : Application
             ?? ""; // Service Role Keyは機密情報のため、環境変数から読み込む必要がある
         
         // お問い合わせ先URL（サポート・ボリュームライセンス共通。環境変数で上書き可能）
-        // ※ リリースビルド: プレースホルダを実URLに（運用 CI / runtime.json）。
+        // ※ リリース前: 下記のプレースホルダーを実際のURLに差し替えること。docs/RELEASE_CHECKLIST.md 参照
         appSettings.ContactUrl = Environment.GetEnvironmentVariable("CONTACT_URL")
             ?? appSettings.ContactUrl;
 
@@ -134,6 +134,8 @@ public partial class App : Application
         // HMACオフライン検証用の秘密鍵（LICENSE_SECRET_KEY が必須）
         appSettings.LicenseSecretKey = Environment.GetEnvironmentVariable("LICENSE_SECRET_KEY")
             ?? appSettings.LicenseSecretKey;
+
+        AppEnvironmentResolver.FinalizeTargetEnvironment(appSettings);
 
         services.AddSingleton(appSettings);
 
@@ -151,6 +153,8 @@ public partial class App : Application
         services.AddSingleton<IBinderService, BinderService>();
         services.AddSingleton<IPrintToPdfService, PrintToPdfService>();
         services.AddSingleton<IPaymentService>(sp => new PaymentService(sp.GetRequiredService<AppSettings>()));
+        services.AddSingleton<ISupabaseConnectionTestService>(sp =>
+            new SupabaseConnectionTestService(sp.GetRequiredService<AppSettings>()));
 
         // ViewModels
         services.AddSingleton<MainWindowViewModel>();
@@ -186,6 +190,8 @@ public partial class App : Application
                 appSettings.ProductPageUrl = settings.ProductPageUrl.Trim();
             if (!string.IsNullOrWhiteSpace(settings.SurveyFormUrl))
                 appSettings.SurveyFormUrl = settings.SurveyFormUrl.Trim();
+            if (!string.IsNullOrWhiteSpace(settings.TargetEnvironment))
+                appSettings.TargetEnvironment = settings.TargetEnvironment.Trim();
         }
         catch (Exception ex)
         {
@@ -195,6 +201,7 @@ public partial class App : Application
 
     private sealed class RuntimeSettings
     {
+        public string? TargetEnvironment { get; set; }
         public string? SupabaseUrl { get; set; }
         public string? SupabaseAnonKey { get; set; }
         public string? ContactUrl { get; set; }
