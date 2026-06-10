@@ -14,30 +14,11 @@ $exePath = Join-Path $projectRoot "src\PdfHandler.UI\bin\$config\net8.0-windows\
 
 # Stop running PdfHandler processes
 if (-not $NoKill) {
-    $killed = $false
-    foreach ($procName in @("PdfHandler.UI", "PdfHandler")) {
-        Get-Process -Name $procName -ErrorAction SilentlyContinue | ForEach-Object {
-            Write-Host "  $procName (PID: $($_.Id)) stopping..." -ForegroundColor Yellow
-            Stop-Process -Id $_.Id -Force -ErrorAction SilentlyContinue
-            $killed = $true
-        }
-    }
-    $null = & taskkill /F /IM "PdfHandler.UI.exe" 2>&1
-    if ($LASTEXITCODE -eq 0) { $killed = $true }
-    if (Test-Path $exePath) {
-        Get-Process | Where-Object { $_.Path -eq $exePath } -ErrorAction SilentlyContinue | ForEach-Object {
-            Write-Host "  Stopping process locking exe (PID: $($_.Id))..." -ForegroundColor Yellow
-            Stop-Process -Id $_.Id -Force -ErrorAction SilentlyContinue
-            $killed = $true
-        }
-    }
-    if ($killed) {
-        Write-Host "Waiting 5 seconds after process stop..." -ForegroundColor Gray
-        Start-Sleep -Seconds 5
-        $still = Get-Process -Name "PdfHandler*" -ErrorAction SilentlyContinue
-        if ($still) {
-            Write-Host "Warning: Process still running. Stop Cursor/VS debugger and try again." -ForegroundColor Red
-        }
+    $stopScript = Join-Path $PSScriptRoot "Stop-PdfHandlerProcesses.ps1"
+    $null = & $stopScript -WaitSeconds 5 -Configuration $config
+    $still = Get-Process -Name "PdfHandler*" -ErrorAction SilentlyContinue
+    if ($still) {
+        Write-Host "Warning: Process still running. Stop Cursor/VS debugger and try again." -ForegroundColor Red
     }
 }
 

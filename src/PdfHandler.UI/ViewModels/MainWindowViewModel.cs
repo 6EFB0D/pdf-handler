@@ -443,6 +443,7 @@ public partial class MainWindowViewModel : ObservableObject
                 if (Directory.Exists(workFolderPath))
                 {
                     var workFolderNode = CreateFolderNodeWithoutChildren(workFolderPath, "📁 Work");
+                    workFolderNode.Parent = rootNode;
                     rootNode.Children.Add(workFolderNode);
                 }
             }
@@ -458,6 +459,7 @@ public partial class MainWindowViewModel : ObservableObject
                 if (Directory.Exists(documentsPath))
                 {
                     var documentsNode = CreateFolderNodeWithoutChildren(documentsPath, "📄 ドキュメント");
+                    documentsNode.Parent = rootNode;
                     rootNode.Children.Add(documentsNode);
                 }
             }
@@ -475,6 +477,7 @@ public partial class MainWindowViewModel : ObservableObject
                 if (Directory.Exists(downloadsPath))
                 {
                     var downloadsNode = CreateFolderNodeWithoutChildren(downloadsPath, "⬇️ ダウンロード");
+                    downloadsNode.Parent = rootNode;
                     rootNode.Children.Add(downloadsNode);
                 }
             }
@@ -493,7 +496,7 @@ public partial class MainWindowViewModel : ObservableObject
                     {
                         Path = "",
                         Name = "⭐ お気に入り",
-                        IsExpanded = false
+                        Parent = rootNode
                     };
 
                     foreach (var favorite in favorites.OrderBy(f => f.Name))
@@ -506,6 +509,7 @@ public partial class MainWindowViewModel : ObservableObject
                                 var favoriteFolderNode = CreateFolderNodeWithoutChildren(favorite.Path, favorite.Name);
                                 // お気に入りであることを識別するためのタグを追加
                                 favoriteFolderNode.Tag = "Favorite";
+                                favoriteFolderNode.Parent = favoritesNode;
                                 favoritesNode.Children.Add(favoriteFolderNode);
                             }
                             catch
@@ -544,6 +548,7 @@ public partial class MainWindowViewModel : ObservableObject
                             : "";
                         var driveTypeLabel = drive.DriveInfo.DriveType == DriveType.Network ? " [ネットワーク]" : "";
                         var driveNode = CreateFolderNodeWithoutChildren(drive.Path, $"{drive.DriveInfo.Name.TrimEnd('\\')}{volumeLabel}{driveTypeLabel}");
+                        driveNode.Parent = rootNode;
                         rootNode.Children.Add(driveNode);
                     }
                     catch
@@ -906,8 +911,7 @@ public partial class MainWindowViewModel : ObservableObject
             favoritesNode = new FolderNode
             {
                 Path = "",
-                Name = "⭐ お気に入り",
-                IsExpanded = false
+                Name = "⭐ お気に入り"
             };
             // お気に入りノードを適切な位置に挿入（ドライブの前に）
             int insertIndex = RootFolder.Children.Count;
@@ -1223,7 +1227,7 @@ public partial class MainWindowViewModel : ObservableObject
     [RelayCommand]
     private async Task ZoomInAsync()
     {
-        if (ZoomPercent < 200)
+        if (ZoomPercent < PreviewZoomMaxPercent)
         {
             ZoomPercent += 25;
             if (SelectedPdfFile != null)
@@ -1236,7 +1240,7 @@ public partial class MainWindowViewModel : ObservableObject
     [RelayCommand]
     private async Task ZoomOutAsync()
     {
-        if (ZoomPercent > 50)
+        if (ZoomPercent > PreviewZoomMinPercent)
         {
             ZoomPercent -= 25;
             if (SelectedPdfFile != null)
@@ -1244,6 +1248,27 @@ public partial class MainWindowViewModel : ObservableObject
                 await LoadPageAsync(SelectedPdfFile.FilePath, CurrentPageNumber);
             }
         }
+    }
+
+    /// <summary>
+    public const int PreviewZoomMinPercent = 50;
+    public const int PreviewZoomMaxPercent = 500;
+
+    /// プレビュー領域の Ctrl+ホイール用（10% 刻み、50〜500%）。
+    /// </summary>
+    public async Task ApplyPreviewZoomWheelAsync(int wheelDelta)
+    {
+        if (wheelDelta == 0)
+            return;
+
+        var step = wheelDelta > 0 ? 10 : -10;
+        var next = Math.Clamp(ZoomPercent + step, PreviewZoomMinPercent, PreviewZoomMaxPercent);
+        if (next == ZoomPercent)
+            return;
+
+        ZoomPercent = next;
+        if (SelectedPdfFile != null)
+            await LoadPageAsync(SelectedPdfFile.FilePath, CurrentPageNumber);
     }
 
     // サムネイルサイズ変更

@@ -307,8 +307,8 @@ namespace PdfHandler.UI.Views
                     // ローカルファイルを読み込み
                     var content = File.ReadAllText(filePath, System.Text.Encoding.UTF8);
                     
-                    // ビューアーで表示
-                    var viewer = new LegalDocumentViewer(title, content);
+                    var enableChapterNav = filename.Equals("USER_MANUAL.txt", StringComparison.OrdinalIgnoreCase);
+                    var viewer = new LegalDocumentViewer(title, content, enableChapterNav);
                     viewer.Owner = this;
                     viewer.ShowDialog();
                 }

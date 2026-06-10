@@ -3,10 +3,9 @@
 // Licensed under the MIT License. See LICENSE file in the project root for full license information.
 
 using System;
-using System.Diagnostics;
-using System.IO;
 using System.Windows;
 using PdfHandler.Core.Interfaces;
+using PdfHandler.UI.Helpers;
 using PdfHandler.Core.Models;
 using PdfHandler.Infrastructure.Configuration;
 using PdfHandler.Infrastructure.Helpers;
@@ -230,7 +229,7 @@ public partial class LicenseDialog : Window
     {
         var url = _appSettings.ContactUrl?.Trim();
         if (string.IsNullOrEmpty(url)) return;
-        try { Process.Start(new ProcessStartInfo { FileName = url, UseShellExecute = true }); }
+        try { BrowserHelper.OpenUrl(url); }
         catch (Exception ex)
         {
             DebugLogger.LogError(ErrorCodes.UrlOpenFailed, $"URLオープン失敗: {url}", ex);
@@ -247,26 +246,14 @@ public partial class LicenseDialog : Window
         }
     }
 
-    private void TermsOfUse_Click(object sender, RoutedEventArgs e) => ShowLegalDocument("TERMS_OF_USE.txt", "利用規約", "https://github.com/6EFB0D/pdf-handler/blob/main/TERMS_OF_USE.txt");
-    private void PrivacyPolicy_Click(object sender, RoutedEventArgs e) => ShowLegalDocument("PRIVACY_POLICY.txt", "プライバシーポリシー", "https://github.com/6EFB0D/pdf-handler/blob/main/PRIVACY_POLICY.txt");
+    private void TermsOfUse_Click(object sender, RoutedEventArgs e) =>
+        LegalDocumentHelper.Show(this, "TERMS_OF_USE.txt", "利用規約", _appSettings.HomePageUrl);
 
-    private void ShowLegalDocument(string filename, string title, string onlineUrl)
-    {
-        try
-        {
-            var filePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Resources", "Legal", filename);
-            if (File.Exists(filePath))
-            {
-                var content = File.ReadAllText(filePath, System.Text.Encoding.UTF8);
-                new LegalDocumentViewer(title, content) { Owner = this }.ShowDialog();
-            }
-            else if (MessageBox.Show($"{title}のファイルが見つかりませんでした。\n\nオンライン版を表示しますか？", "確認", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
-            {
-                Process.Start(new ProcessStartInfo { FileName = onlineUrl, UseShellExecute = true });
-            }
-        }
-        catch (Exception ex) { MessageBox.Show($"{title}の表示中にエラーが発生しました。\n\n{ex.Message}", "エラー", MessageBoxButton.OK, MessageBoxImage.Error); }
-    }
+    private void PrivacyPolicy_Click(object sender, RoutedEventArgs e) =>
+        LegalDocumentHelper.Show(this, "PRIVACY_POLICY.txt", "プライバシーポリシー", _appSettings.HomePageUrl);
+
+    private void HomePage_Click(object sender, RoutedEventArgs e) =>
+        BrowserHelper.OpenUrl(_appSettings.HomePageUrl);
 
     private async void TestConnectionButton_Click(object sender, RoutedEventArgs e)
     {

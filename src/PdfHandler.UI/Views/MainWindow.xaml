@@ -188,6 +188,7 @@
                           PreviewDragOver="FolderTreeView_PreviewDragOver">
                     <TreeView.ItemContainerStyle>
                         <Style TargetType="TreeViewItem">
+                            <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}"/>
                             <Setter Property="AllowDrop" Value="True"/>
                             <EventSetter Event="Expanded" Handler="TreeViewItem_Expanded"/>
                             <EventSetter Event="PreviewDragOver" Handler="FolderTreeViewItem_DragOver"/>
@@ -478,7 +479,11 @@
                             ToolTip="{Binding PageEditFeatureTooltip}">
                         <ScrollViewer x:Name="PreviewScrollViewer" 
                                       HorizontalScrollBarVisibility="Auto" 
-                                      VerticalScrollBarVisibility="Auto">
+                                      VerticalScrollBarVisibility="Auto"
+                                      PreviewMouseWheel="PreviewScrollViewer_PreviewMouseWheel"
+                                      PreviewMouseLeftButtonDown="PreviewScrollViewer_PreviewMouseLeftButtonDown"
+                                      PreviewMouseMove="PreviewScrollViewer_PreviewMouseMove"
+                                      PreviewMouseLeftButtonUp="PreviewScrollViewer_PreviewMouseLeftButtonUp">
                             <Image x:Name="PreviewImage" 
                                    Source="{Binding PreviewImageData, Converter={StaticResource ByteArrayToImageConverter}}"
                                    Stretch="None"

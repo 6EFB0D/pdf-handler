@@ -42,6 +42,10 @@ public partial class MainWindow : Window
     private string _pendingDropTargetPath = string.Empty;
     private TreeViewItem? _folderTreeDropHighlightItem;
     private Brush? _folderTreeDropHighlightPreviousBackground;
+    private bool _previewPanActive;
+    private Point _previewPanStartPoint;
+    private double _previewPanStartHorizontalOffset;
+    private double _previewPanStartVerticalOffset;
 
     private static readonly Brush FolderTreeDropTargetBrush = CreateFrozenBrush(214, 235, 255);
 
@@ -56,6 +60,10 @@ public partial class MainWindow : Window
 
         // ViewModelのRootFolderプロパティ変更を監視
         _viewModel.PropertyChanged += ViewModel_PropertyChanged;
+        _viewModel.InitializationCompleted += (_, _) =>
+        {
+            Dispatcher.BeginInvoke(ApplyFolderTreeExpansionFromModel, DispatcherPriority.Loaded);
+        };
         
         // 初期状態を設定（既にRootFolderが設定されている場合）
         // ただし、InitializeAsyncが非同期で実行されるため、少し遅延して確認
@@ -169,7 +177,8 @@ public partial class MainWindow : Window
                 {
                     var items = new ObservableCollection<FolderNode> { _viewModel.RootFolder };
                     FolderTreeView.ItemsSource = items;
-                    
+                    ApplyFolderTreeExpansionFromModel();
+
                     // 選択されたフォルダをTreeViewで選択状態にする
                     if (_viewModel.SelectedFolder != null)
                     {
@@ -242,6 +251,27 @@ public partial class MainWindow : Window
         return null;
     }
     
+    /// <summary>
+    /// FolderNode.IsExpanded を TreeViewItem に反映（ItemContainerStyle の TwoWay バインディング補助）。
+    /// </summary>
+    private void ApplyFolderTreeExpansionFromModel()
+    {
+        if (FolderTreeView.ItemsSource is not ObservableCollection<FolderNode> { Count: > 0 } items)
+            return;
+
+        EnsureExpandedRecursive(items[0]);
+        FolderTreeView.UpdateLayout();
+    }
+
+    private static void EnsureExpandedRecursive(FolderNode node)
+    {
+        if (node.IsExpanded)
+        {
+            foreach (var child in node.Children)
+                EnsureExpandedRecursive(child);
+        }
+    }
+
     private void ExpandParentNodes(FolderNode node)
     {
         // 親ノードを展開するために、ルートから該当ノードまでのパスを展開
@@ -573,50 +603,87 @@ public partial class MainWindow : Window
 
     private async void FolderTreeView_ContextMenuOpening(object sender, ContextMenuEventArgs e)
     {
-        if (sender is TreeView treeView && _viewModel != null)
+        if (sender is not TreeView treeView || _viewModel == null)
+            return;
+
+        if (treeView.ContextMenu is not ContextMenu contextMenu)
+            return;
+
+        // ContextMenu は別 Namescope のため FindName は使わない
+        ApplyFolderContextMenuDefaults(contextMenu);
+
+        var mousePosition = Mouse.GetPosition(treeView);
+        var hitTestResult = VisualTreeHelper.HitTest(treeView, mousePosition);
+        if (hitTestResult == null)
+            return;
+
+        var item = FindParent<System.Windows.Controls.TreeViewItem>(hitTestResult.VisualHit);
+        if (item == null || item.DataContext is not FolderNode clickedNode)
+            return;
+
+        _viewModel.SelectedFolder = clickedNode;
+        _contextMenuFolderNode = clickedNode;
+        item.IsSelected = true;
+
+        if (!clickedNode.IsChildrenLoaded)
+            await _viewModel.LoadChildrenAsync(clickedNode);
+
+        var favorites = await _viewModel.GetFavoritesAsync();
+        var isFavorite = favorites.Any(f => f.Path.Equals(clickedNode.Path, StringComparison.OrdinalIgnoreCase));
+        var isEmptyPath = string.IsNullOrEmpty(clickedNode.Path);
+        var isFavoriteTreeItem = clickedNode.Tag == "Favorite";
+        var showFavoriteEditMenus = isFavoriteTreeItem;
+
+        if (TryGetFolderContextMenuItem(contextMenu, "お気に入りに追加", out var addMenuItem))
         {
-            // 右クリックされたアイテムを取得
-            var mousePosition = Mouse.GetPosition(treeView);
-            var hitTestResult = VisualTreeHelper.HitTest(treeView, mousePosition);
-            if (hitTestResult != null)
+            addMenuItem.Visibility = isFavoriteTreeItem ? Visibility.Collapsed : Visibility.Visible;
+            addMenuItem.IsEnabled = !isEmptyPath && !isFavorite;
+        }
+
+        if (TryGetFolderContextMenuItem(contextMenu, "お気に入りから削除", out var removeMenuItem))
+        {
+            removeMenuItem.Visibility = showFavoriteEditMenus ? Visibility.Visible : Visibility.Collapsed;
+            removeMenuItem.IsEnabled = showFavoriteEditMenus;
+        }
+
+        if (TryGetFolderContextMenuItem(contextMenu, "お気に入りの名前を変更", out var renameMenuItem))
+        {
+            renameMenuItem.Visibility = showFavoriteEditMenus ? Visibility.Visible : Visibility.Collapsed;
+            renameMenuItem.IsEnabled = showFavoriteEditMenus;
+        }
+    }
+
+    private static void ApplyFolderContextMenuDefaults(ContextMenu contextMenu)
+    {
+        if (TryGetFolderContextMenuItem(contextMenu, "お気に入りに追加", out var addMenuItem))
+        {
+            addMenuItem.Visibility = Visibility.Visible;
+            addMenuItem.IsEnabled = true;
+        }
+        if (TryGetFolderContextMenuItem(contextMenu, "お気に入りから削除", out var removeMenuItem))
+        {
+            removeMenuItem.Visibility = Visibility.Collapsed;
+            removeMenuItem.IsEnabled = false;
+        }
+        if (TryGetFolderContextMenuItem(contextMenu, "お気に入りの名前を変更", out var renameMenuItem))
+        {
+            renameMenuItem.Visibility = Visibility.Collapsed;
+            renameMenuItem.IsEnabled = false;
+        }
+    }
+
+    private static bool TryGetFolderContextMenuItem(ContextMenu contextMenu, string header, out MenuItem menuItem)
+    {
+        foreach (var item in contextMenu.Items)
+        {
+            if (item is MenuItem mi && (mi.Header?.ToString() ?? "") == header)
             {
-                var item = FindParent<System.Windows.Controls.TreeViewItem>(hitTestResult.VisualHit);
-                if (item != null && item.DataContext is FolderNode clickedNode)
-                {
-                    // 選択状態にする（SelectedFolderプロパティを設定）
-                    _viewModel.SelectedFolder = clickedNode;
-                    _contextMenuFolderNode = clickedNode;
-                    item.IsSelected = true;
-
-                    // 遅延読み込み
-                    if (!clickedNode.IsChildrenLoaded)
-                    {
-                        await _viewModel.LoadChildrenAsync(clickedNode);
-                    }
-
-                    // お気に入りかどうかを確認してメニューを動的に設定
-                    if (treeView.ContextMenu is ContextMenu contextMenu)
-                    {
-                        var favorites = await _viewModel.GetFavoritesAsync();
-                        var isFavorite = favorites.Any(f => f.Path.Equals(clickedNode.Path, StringComparison.OrdinalIgnoreCase));
-                        var isEmptyPath = string.IsNullOrEmpty(clickedNode.Path);
-
-                        if (contextMenu.FindName("AddFavoriteMenuItem") is MenuItem addMenuItem)
-                        {
-                            addMenuItem.IsEnabled = !isEmptyPath && !isFavorite;
-                        }
-                        if (contextMenu.FindName("RemoveFavoriteMenuItem") is MenuItem removeMenuItem)
-                        {
-                            removeMenuItem.IsEnabled = !isEmptyPath && isFavorite;
-                        }
-                        if (contextMenu.FindName("RenameFavoriteMenuItem") is MenuItem renameMenuItem)
-                        {
-                            renameMenuItem.IsEnabled = !isEmptyPath && isFavorite;
-                        }
-                    }
-                }
+                menuItem = mi;
+                return true;
             }
         }
+        menuItem = null!;
+        return false;
     }
 
     private async void AddFavoriteMenuItem_Click(object sender, RoutedEventArgs e)
@@ -704,6 +771,52 @@ public partial class MainWindow : Window
     private void Exit_Click(object sender, RoutedEventArgs e)
     {
         Application.Current.Shutdown();
+    }
+
+    private async void PreviewScrollViewer_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        if (_viewModel == null || (Keyboard.Modifiers & ModifierKeys.Control) != ModifierKeys.Control)
+            return;
+
+        e.Handled = true;
+        await _viewModel.ApplyPreviewZoomWheelAsync(e.Delta);
+    }
+
+    private void PreviewScrollViewer_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (_viewModel == null || _viewModel.ZoomPercent <= 100)
+            return;
+
+        _previewPanActive = true;
+        _previewPanStartPoint = e.GetPosition(PreviewScrollViewer);
+        _previewPanStartHorizontalOffset = PreviewScrollViewer.HorizontalOffset;
+        _previewPanStartVerticalOffset = PreviewScrollViewer.VerticalOffset;
+        PreviewScrollViewer.CaptureMouse();
+        PreviewScrollViewer.Cursor = Cursors.Hand;
+        e.Handled = true;
+    }
+
+    private void PreviewScrollViewer_PreviewMouseMove(object sender, MouseEventArgs e)
+    {
+        if (!_previewPanActive || e.LeftButton != MouseButtonState.Pressed)
+            return;
+
+        var pos = e.GetPosition(PreviewScrollViewer);
+        var dx = _previewPanStartPoint.X - pos.X;
+        var dy = _previewPanStartPoint.Y - pos.Y;
+        PreviewScrollViewer.ScrollToHorizontalOffset(_previewPanStartHorizontalOffset + dx);
+        PreviewScrollViewer.ScrollToVerticalOffset(_previewPanStartVerticalOffset + dy);
+        e.Handled = true;
+    }
+
+    private void PreviewScrollViewer_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        if (!_previewPanActive)
+            return;
+
+        _previewPanActive = false;
+        PreviewScrollViewer.ReleaseMouseCapture();
+        PreviewScrollViewer.Cursor = null;
     }
 
     private void Preview_DragOver(object sender, DragEventArgs e)
@@ -851,11 +964,6 @@ public partial class MainWindow : Window
         var dialog = new LicenseDialog { Owner = this };
         dialog.ShowDialog();
         _viewModel?.UpdateTrialStatus();
-    }
-
-    private void ProductPage_Click(object sender, RoutedEventArgs e)
-    {
-        OpenUrlInBrowser("ProductPageUrl", "PDF Handlerのページ");
     }
 
     private void Contact_Click(object sender, RoutedEventArgs e)
@@ -1160,7 +1268,7 @@ public partial class MainWindow : Window
             {
                 using var reader = new System.IO.StreamReader(stream, System.Text.Encoding.UTF8);
                 var content = reader.ReadToEnd();
-                var viewer = new LegalDocumentViewer("取扱説明書", content);
+                var viewer = new LegalDocumentViewer("取扱説明書", content, enableChapterNavigation: true);
                 viewer.Owner = this;
                 viewer.ShowDialog();
             }

@@ -2,95 +2,56 @@
 
 PDF Handler の配布物・検証出力は、DEV / PROD とバージョンが混ざらないように以下のルールで扱う。
 
-## 正式な配布候補
+## GitHub Releases に載せるもの（正本）
 
-`scripts/build-release.ps1` で作成する。
+**v1.1.2 以降のルール**（手動アップロード分）:
+
+| ファイル | 説明 |
+|----------|------|
+| `PdfHandler-<version>-prod-setup.exe` | Inno Setup インストーラ（**主経路**） |
+| `PdfHandler-<version>-prod-setup-checksum.txt` | setup.exe の SHA-256 |
+| `PdfHandler-<version>-prod-setup.zip` | **setup.exe を ZIP にしたもの**（EXE 直ダウンロードがブロックされる場合） |
+
+GitHub が自動で付ける **Source code (zip / tar.gz)** はソースアーカイブであり、インストーラではありません。
+
+### GitHub に載せないもの
+
+| ファイル | 理由 |
+|----------|------|
+| `PdfHandler-<version>-win-x64.zip` | 展開して `PdfHandler.UI.exe` を直接起動する形式。**公開しない**（社内検証用のみ） |
+
+## ビルド成果物（ローカル）
 
 ```text
 artifacts/
   release/
     prod/
-      PdfHandler-<version>-win-x64/          # 配布用展開フォルダ（ZIP 作成元）
-        PdfHandler.UI.exe
-        PdfHandler.runtime.json              # PROD Supabase
-        README_RELEASE.txt
-      PdfHandler-<version>-win-x64.zip       # ZIP 版（setup がブロックされる場合の代替）
-      PdfHandler-<version>-win-x64-checksum.txt
-    dev/
-      PdfHandler-<version>-win-x64/
-        PdfHandler.UI.exe
-        PdfHandler.runtime.json              # DEV Supabase
-        README_RELEASE.txt
-      PdfHandler-<version>-win-x64.zip
-      PdfHandler-<version>-win-x64-checksum.txt
+      PdfHandler-<version>-win-x64/          # publish 出力（インストーラの入力・社内検証用）
+      PdfHandler-<version>-win-x64.zip       # 社内検証用（GitHub 非公開）
 
-installer_output/                            # Inno Setup 出力（tools/build-release.ps1）
-  PdfHandler-<version>-<prod|dev>-setup.exe
-  PdfHandler-<version>-<prod|dev>-setup-checksum.txt
-  PdfHandler-<version>-win-x64.zip           # リリース作業用にコピー（setup と同梱アップロード用）
-  PdfHandler-<version>-win-x64-checksum.txt
+installer_output/                            # tools/build-release.ps1 の出力
+  PdfHandler-<version>-prod-setup.exe        # → GitHub Release
+  PdfHandler-<version>-prod-setup-checksum.txt
+  PdfHandler-<version>-prod-setup.zip        # → GitHub Release
 ```
-
-### 命名規則
-
-| 成果物 | 例（v1.1.3 PROD） |
-|--------|-------------------|
-| 配布フォルダ | `artifacts/release/prod/PdfHandler-1.1.3-win-x64/` |
-| ZIP 版 | `artifacts/release/prod/PdfHandler-1.1.3-win-x64.zip` |
-| インストーラ | `installer_output/PdfHandler-1.1.3-prod-setup.exe` |
-
-ZIP 版はインストーラの**代替**（SmartScreen / Defender で setup.exe が止まる場合）。**通常は setup.exe を配布・案内する。**
 
 ## ビルドコマンド
 
-推奨（ローカル固定シークレット）:
-
-```powershell
-Copy-Item .\scripts\Secrets.local.ps1.example .\scripts\Secrets.local.ps1
-# scripts\Secrets.local.ps1 の PDFHANDLER_PROD_SUPABASE_ANON_KEY を実値に置換
-```
-
-対話選択:
-
-```powershell
-.\scripts\build-release.ps1
-```
-
-PROD:
-
 ```powershell
 .\scripts\build-release.ps1 -TargetEnvironment PROD
-```
-
-DEV:
-
-```powershell
-.\scripts\build-release.ps1 -TargetEnvironment DEV
-```
-
-インストーラ（任意・GitHub 公開時は PROD で実施）:
-
-```powershell
 .\tools\build-release.ps1 -TargetEnvironment PROD
 ```
 
-`scripts/build-release.ps1` で配布フォルダと ZIP／チェックサムを生成し、`tools/build-release.ps1` で setup.exe と ZIP を `installer_output/` に揃えます。
+`gh release upload` 例:
 
-## 起動ルール
-
-- PROD テストは必ず `artifacts\release\prod\PdfHandler-<version>-win-x64\PdfHandler.UI.exe` から起動する。
-- DEV テストは必ず `artifacts\release\dev\PdfHandler-<version>-win-x64\PdfHandler.UI.exe` から起動する。
-- `src\...\bin\Debug` や `artifacts\run-build` などは開発・検証用であり、リリース判定には使わない。
-
-## 既存の一時出力
-
-以下は検証・一時実行の出力として扱い、正式配布物とは区別する。
-
-```text
-artifacts/run-build/
-artifacts/verify-*/
-artifacts/license-entry-run/
-artifacts/prod-functions-inspect/
+```powershell
+gh release upload v1.1.4 --repo 6EFB0D/pdf-handler --clobber `
+  installer_output/PdfHandler-1.1.4-prod-setup.exe `
+  installer_output/PdfHandler-1.1.4-prod-setup-checksum.txt `
+  installer_output/PdfHandler-1.1.4-prod-setup.zip
 ```
 
-必要がなくなったら削除してよいが、削除前に未回収のログやスクリーンショットがないか確認する。
+## 起動ルール（社内検証）
+
+- PROD: `artifacts\release\prod\PdfHandler-<version>-win-x64\PdfHandler.UI.exe`
+- DEV: `artifacts\release\dev\PdfHandler-<version>-win-x64\PdfHandler.UI.exe`

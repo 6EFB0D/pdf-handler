@@ -45,6 +45,12 @@ public class AppSettings
     public string ProductPageUrl { get; set; } = "https://6efb0d.github.io/office-goplan/pdfhandler.html";
 
     /// <summary>
+    /// Office Go Plan サイトトップ（ヘルプ・ライセンス画面の誘導用）
+    /// 環境変数 HOME_PAGE_URL で上書き可能。
+    /// </summary>
+    public string HomePageUrl { get; set; } = "https://6efb0d.github.io/office-goplan/";
+
+    /// <summary>
     /// アンケート・要望フォームURL（Google フォーム等の回答用 /viewform URL）
     /// 環境変数 SURVEY_FORM_URL で上書き可能。
     /// </summary>

@@ -3,11 +3,11 @@
 // Licensed under the MIT License. See LICENSE file in the project root for full license information.
 
 using System;
-using System.IO;
 using System.Windows;
-using System.Diagnostics;
 using PdfHandler.Core.Interfaces;
 using PdfHandler.Core.Models;
+using PdfHandler.Infrastructure.Configuration;
+using PdfHandler.UI.Helpers;
 
 namespace PdfHandler.UI.Views
 {
@@ -17,6 +17,7 @@ namespace PdfHandler.UI.Views
     public partial class LicenseInfoDialog : Window
     {
         private readonly ILicenseService _licenseService;
+        private readonly AppSettings _appSettings;
 
         public LicenseInfoDialog()
         {
@@ -25,6 +26,7 @@ namespace PdfHandler.UI.Views
             // DIコンテナから取得
             var app = (App)Application.Current;
             _licenseService = app.GetService<ILicenseService>();
+            _appSettings = app.GetService<AppSettings>();
             
             // ライセンス情報を表示
             LoadLicenseInfo();
@@ -96,38 +98,17 @@ namespace PdfHandler.UI.Views
         /// <summary>
         /// 利用規約
         /// </summary>
-        private void TermsOfUse_Click(object sender, RoutedEventArgs e)
-        {
-            ShowLegalDocument("TERMS_OF_USE.txt", "利用規約",
-                "https://github.com/6EFB0D/pdf-handler/blob/main/TERMS_OF_USE.txt");
-        }
+        private void TermsOfUse_Click(object sender, RoutedEventArgs e) =>
+            LegalDocumentHelper.Show(this, "TERMS_OF_USE.txt", "利用規約", _appSettings.HomePageUrl);
 
-        /// <summary>
-        /// プライバシーポリシー
-        /// </summary>
-        private void PrivacyPolicy_Click(object sender, RoutedEventArgs e)
-        {
-            ShowLegalDocument("PRIVACY_POLICY.txt", "プライバシーポリシー",
-                "https://github.com/6EFB0D/pdf-handler/blob/main/PRIVACY_POLICY.txt");
-        }
+        private void PrivacyPolicy_Click(object sender, RoutedEventArgs e) =>
+            LegalDocumentHelper.Show(this, "PRIVACY_POLICY.txt", "プライバシーポリシー", _appSettings.HomePageUrl);
 
-        /// <summary>
-        /// オープンソースライセンス（すべて）
-        /// </summary>
-        private void OpenSourceLicenses_Click(object sender, RoutedEventArgs e)
-        {
-            ShowLegalDocument("OPEN_SOURCE_LICENSES.txt", "オープンソースライセンス",
-                "https://github.com/6EFB0D/pdf-handler/blob/main/OPEN_SOURCE_LICENSES.txt");
-        }
+        private void OpenSourceLicenses_Click(object sender, RoutedEventArgs e) =>
+            LegalDocumentHelper.Show(this, "OPEN_SOURCE_LICENSES.txt", "オープンソースライセンス", _appSettings.HomePageUrl);
 
-        /// <summary>
-        /// PdfSharpライセンス（OPEN_SOURCE_LICENSES.txtを開く）
-        /// </summary>
-        private void PdfSharpLicense_Click(object sender, RoutedEventArgs e)
-        {
-            ShowLegalDocument("OPEN_SOURCE_LICENSES.txt", "オープンソースライセンス",
-                "https://github.com/empira/PDFsharp/blob/master/LICENSE");
-        }
+        private void PdfSharpLicense_Click(object sender, RoutedEventArgs e) =>
+            BrowserHelper.OpenUrl("https://github.com/empira/PDFsharp/blob/master/LICENSE");
 
         /// <summary>
         /// ライセンス管理ボタンクリック
@@ -164,68 +145,5 @@ namespace PdfHandler.UI.Views
             this.Close();
         }
 
-        /// <summary>
-        /// 法的文書を表示（埋め込みリソースから読み込み）
-        /// </summary>
-        private void ShowLegalDocument(string filename, string title, string onlineUrl)
-        {
-            try
-            {
-                var assembly = System.Reflection.Assembly.GetExecutingAssembly();
-                var resourceName = $"PdfHandler.UI.Resources.Legal.{filename}";
-
-                using var stream = assembly.GetManifestResourceStream(resourceName);
-                if (stream != null)
-                {
-                    using var reader = new StreamReader(stream, System.Text.Encoding.UTF8);
-                    var content = reader.ReadToEnd();
-                    var viewer = new LegalDocumentViewer(title, content);
-                    viewer.Owner = this;
-                    viewer.ShowDialog();
-                }
-                else
-                {
-                    // 埋め込みリソースが見つからない場合はオンライン版へ
-                    var result = MessageBox.Show(
-                        $"{title}の表示中にエラーが発生しました。\n\nオンライン版を表示しますか？",
-                        "確認",
-                        MessageBoxButton.YesNo,
-                        MessageBoxImage.Question);
-                    if (result == MessageBoxResult.Yes)
-                        OpenUrl(onlineUrl);
-                }
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show(
-                    $"{title}の表示中にエラーが発生しました。\n\n{ex.Message}",
-                    "エラー",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Error);
-            }
-        }
-
-        /// <summary>
-        /// URLを開く
-        /// </summary>
-        private void OpenUrl(string url)
-        {
-            try
-            {
-                Process.Start(new ProcessStartInfo
-                {
-                    FileName = url,
-                    UseShellExecute = true
-                });
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show(
-                    $"URLを開けませんでした。\n\n{url}\n\n{ex.Message}",
-                    "エラー",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Error);
-            }
-        }
     }
 }

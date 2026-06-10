@@ -157,7 +157,7 @@ serve(async (req) => {
 
       if (!activation || !activation.is_active) {
         // デバイス数上限チェック（ZipSearch / PictComp も同じ上限を共有）
-        const DEVICE_LIMIT = 3;
+        const DEVICE_LIMIT = 1;
         const { count: activeCount } = await supabase
           .from("license_activations")
           .select("*", { count: "exact", head: true })

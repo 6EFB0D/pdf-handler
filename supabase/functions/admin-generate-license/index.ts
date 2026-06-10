@@ -195,8 +195,15 @@ serve(async (req) => {
 
     if (insertError || !inserted || inserted.length !== count) {
       console.error("INSERT error:", insertError);
+      const detail =
+        insertError?.message ??
+        (inserted ? `inserted ${inserted.length}/${count}` : "insert returned no rows");
       return new Response(
-        JSON.stringify({ error: "Internal server error" }),
+        JSON.stringify({
+          error: "Internal server error",
+          details: detail,
+          code: insertError?.code ?? null,
+        }),
         { status: 500, headers: JSON_HEADERS },
       );
     }
@@ -246,8 +253,9 @@ serve(async (req) => {
 
   } catch (error) {
     console.error("admin-generate-license:", error);
+    const detail = error instanceof Error ? error.message : String(error);
     return new Response(
-      JSON.stringify({ error: "Internal server error" }),
+      JSON.stringify({ error: "Internal server error", details: detail }),
       { status: 500, headers: JSON_HEADERS },
     );
   }

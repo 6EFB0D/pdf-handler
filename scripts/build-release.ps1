@@ -1,10 +1,12 @@
-# PDF繝上Φ繝峨Λ: 繝ｪ繝ｪ繝ｼ繧ｹ逕ｨ EXE 繧・dotnet publish 縺ｧ逕滓・・・IP / Inno 縺ｮ蜑榊ｷ･遞具ｼ・#
-# 菴ｿ縺・婿:
+# PDF Handler: release EXE via dotnet publish (input for Inno installer).
+# Usage:
 #   .\scripts\build-release.ps1 -TargetEnvironment PROD
 #   .\scripts\build-release.ps1 -TargetEnvironment DEV
 #
-# 谺｡縺ｮ繧ｹ繝・ャ繝暦ｼ医う繝ｳ繧ｹ繝医・繝ｩ・・
+# Next step (installer):
 #   .\tools\build-release.ps1 -TargetEnvironment PROD
+#
+# If you see parser errors on Japanese paths, save this file as UTF-8 with BOM.
 
 param(
     [ValidateSet("DEV", "PROD")]
@@ -96,13 +98,12 @@ function Write-Sha256ChecksumFile {
     $hash = (Get-FileHash -LiteralPath $FilePath -Algorithm SHA256).Hash
     $fileName = [IO.Path]::GetFileName($FilePath)
     $date = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
-    $text = @"
-# PDFハンドラ $Label チェックサム
-# 生成日時: $date
-# ファイル: $fileName
-
-SHA256: $hash
-"@
+    $text = (
+        "# PDF Handler $Label checksum`n" +
+        "# Generated: $date`n" +
+        "# File: $fileName`n`n" +
+        "SHA256: $hash`n"
+    )
     if ($FilePath -match '\.zip$') {
         $checksumPath = $FilePath -replace '\.zip$', '-checksum.txt'
     } elseif ($FilePath -match '\.exe$') {
@@ -139,7 +140,7 @@ function Write-PortableReleaseZip {
 
     Compress-Archive -Path ($items | ForEach-Object { $_.FullName }) -DestinationPath $zipPath -CompressionLevel Optimal
 
-    $checksum = Write-Sha256ChecksumFile -FilePath $zipPath -Label "ZIP 版"
+    $checksum = Write-Sha256ChecksumFile -FilePath $zipPath -Label "ZIP"
 
     Write-Host ("  ZIP: " + $zipPath) -ForegroundColor Green
     Write-Host ("  ZIP SHA-256: " + $checksum.Hash) -ForegroundColor DarkGray
@@ -161,19 +162,16 @@ function Write-ReadmeReleaseTxt {
     )
 
     $readmePath = Join-Path $OutputDir "README_RELEASE.txt"
-    $content = @"
-PDFハンドラ $Version ($TargetEnvironment)
-InformationalVersion: $InformationalVersion
-
-起動: PdfHandler.UI.exe をダブルクリック（このフォルダ内）
-
-配布:
-- 推奨: インストーラ (tools\build-release.ps1 で生成する *-setup.exe)
-- 代替: 同じバージョンの PdfHandler-$Version-win-x64.zip（SmartScreen 等で EXE が止まる場合）
-
-同梱: PdfHandler.runtime.json（接続先 $TargetEnvironment）
-"@
-    [System.IO.File]::WriteAllText($readmePath, $content.TrimEnd() + "`n", [System.Text.UTF8Encoding]::new($false))
+    $content = (
+        "PDF Handler $Version ($TargetEnvironment)`n" +
+        "InformationalVersion: $InformationalVersion`n`n" +
+        "Launch: double-click PdfHandler.UI.exe in this folder.`n`n" +
+        "Distribution:`n" +
+        "  * Recommended: installer (tools\build-release.ps1 -> *-setup.exe)`n" +
+        "  * Alternative: PdfHandler-$Version-win-x64.zip (if SmartScreen blocks EXE)`n`n" +
+        "Bundled: PdfHandler.runtime.json (target: $TargetEnvironment)`n"
+    )
+    [System.IO.File]::WriteAllText($readmePath, $content, [System.Text.UTF8Encoding]::new($false))
     Write-Host ("  Wrote " + $readmePath) -ForegroundColor DarkGray
 }
 
@@ -277,7 +275,7 @@ if (Test-Path -LiteralPath $OutDir) {
 }
 New-Item -ItemType Directory -Force -Path $OutDir | Out-Null
 
-# エンドユーザー向け配布: self-contained（.NET ランタイム未導入 PC でも実行可能）
+# Self-contained publish (.NET runtime bundled for end-user PCs)
 & dotnet publish $UiProject `
     --configuration Release `
     --runtime win-x64 `

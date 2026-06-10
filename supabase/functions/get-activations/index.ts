@@ -116,7 +116,7 @@ serve(async (req) => {
       lastVerificationDate: a.last_verification_date,
     }));
 
-    const DEVICE_LIMIT = 3;
+    const DEVICE_LIMIT = 1;
 
     return new Response(
       JSON.stringify({
