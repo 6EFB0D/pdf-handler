@@ -1,20 +1,7 @@
-# gitleaks 設定 — pdf-handler（QM 2.2 §3.2 / G-5 と整合）
-#
-# 方針:
-# - service_role・sk_live 等は許可しない。
-# - 以下は (1) ドキュメント上のプレースホルダ・サンプル、(2) 開発用 anon のスクリプト直書き（履歴に残存）
-#   に対する一時的な path allowlist。許可範囲を広げすぎないこと。
-# CAPA: run-dev / build-release を Secrets.local.ps1 のみに寄せ、allowlist を縮小する。
+# Secret scanning for the pdf-handler distribution repository.
+# Blocks API keys, tokens, and other credentials from being committed.
 
 title = "pdf-handler"
 
 [allowlist]
-paths = [
-  '''scripts/run-dev.ps1''',
-  '''scripts/build-release.ps1''',
-  '''docs/testing/license-file-helper.md''',
-  '''docs/operations/07_admin-functions-setup.md''',
-  '''docs/supabase-setup/05_environment-variables.md''',
-  # DEV anon（公開可能）キーを説明目的で記載しているドキュメント
-  '''docs/supabase-setup/06_security-setup-guide.md''',
-]
+paths = []

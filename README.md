@@ -68,3 +68,7 @@
 
 - **[お問い合わせフォーム（Google フォーム）](https://docs.google.com/forms/d/1NpXzk1kyUn2LhUzQhhMHq_tnT1oOGAsv561L-7nMfos/viewform)**
 - [support@office-goplan.com](mailto:support@office-goplan.com)
+
+## このリポジトリについて
+
+この GitHub リポジトリは **PDFハンドラのダウンロード案内** 用です。プログラム本体は [Releases](https://github.com/6EFB0D/pdf-handler/releases/latest) のインストーラ（Assets）から取得してください。
