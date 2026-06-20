@@ -10,7 +10,7 @@
 | | |
 |---|---|
 | **製品紹介・購入** | [pdfHandler 製品ページ](https://6efb0d.github.io/office-goplan/pdfhandler.html) |
-| **ダウンロード** | [GitHub Releases](https://github.com/6EFB0D/pdf-handler/releases/latest) |
+| **ダウンロード** | [GitHub Releases（最新版）](https://github.com/6EFB0D/pdf-handler/releases/latest) — **ページ下部の Assets** から setup.exe |
 | **お問い合わせ** | [Google フォーム](https://docs.google.com/forms/d/1NpXzk1kyUn2LhUzQhhMHq_tnT1oOGAsv561L-7nMfos/viewform) |
 
 ## できること
@@ -25,9 +25,13 @@
 
 詳細は [製品ページ](https://6efb0d.github.io/office-goplan/pdfhandler.html) を参照してください。
 
-## インストール
+## ダウンロード（インストーラ）
 
-[Releases ページ](https://github.com/6EFB0D/pdf-handler/releases/latest) の Assets から取得します。
+**重要**: インストーラは [Releases ページ](https://github.com/6EFB0D/pdf-handler/releases/latest) の **一番下「Assets」** から取得してください。ページ上部の表や「Source code (zip)」からはダウンロードできません。
+
+1. [GitHub Releases（最新版）](https://github.com/6EFB0D/pdf-handler/releases/latest) を開く
+2. ページを **下までスクロール** し、「**Assets**」を展開
+3. 次のファイルから選ぶ:
 
 | ファイル | 用途 |
 |----------|------|
@@ -35,9 +39,9 @@
 | `PdfHandler-<version>-prod-setup.zip` | setup.exe を ZIP にしたもの（EXE 直ダウンロードがブロックされる場合） |
 | `PdfHandler-<version>-prod-setup-checksum.txt` | setup.exe の SHA-256（任意） |
 
-1. 上記の **setup.exe**（または setup.zip を展開して中の setup.exe）を実行
-2. 画面の指示に従ってインストール（per-user・管理者権限不要）
-3. スタートメニューまたはデスクトップのショートカットから起動
+4. ダウンロードした **setup.exe**（または setup.zip を展開して中の setup.exe）を実行
+5. 画面の指示に従ってインストール（per-user・管理者権限不要）
+6. スタートメニューまたはデスクトップのショートカットから起動
 
 > **Source code (zip)** は GitHub が自動付与するソースアーカイブです。インストーラではありません。
 
