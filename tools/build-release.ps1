@@ -1,4 +1,4 @@
-# PDF Handler インストーラビルド + GitHub Release 用アセット生成
+﻿# PDF Handler インストーラビルド + GitHub Release 用アセット生成
 # 使い方:
 #   .\tools\build-release.ps1 -TargetEnvironment PROD
 #
