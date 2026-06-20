@@ -21,8 +21,6 @@ const SERVICE_ROLE_KEY_SOURCE = CUSTOM_SERVICE_ROLE_KEY
 interface RequestBody {
   licenseKey: string;
   hardwareId: string;
-  /** 旧 HWID（MachineGuid 移行前の端末識別子）。同一端末の自動移行に使用 */
-  previousHardwareId?: string;
   /** クライアント製品コード（PDFH / ZIPS / PICT）。licenses.app_id およびキー先頭と一致必須 */
   clientAppId: string;
   deviceName?: string; // アクティベーション時の PC 名（Environment.MachineName）
@@ -42,7 +40,7 @@ serve(async (req) => {
       });
     }
 
-    const { licenseKey, hardwareId, previousHardwareId, clientAppId, deviceName, appVersion }: RequestBody = await req.json();
+    const { licenseKey, hardwareId, clientAppId, deviceName, appVersion }: RequestBody = await req.json();
 
     if (!licenseKey || !hardwareId) {
       return new Response(
@@ -148,14 +146,6 @@ serve(async (req) => {
 
     // 買い切り版の場合は常に有効
     if (license.plan === "purchased") {
-      await tryMigrateHardwareId(
-        supabase,
-        license.id,
-        hardwareId,
-        previousHardwareId,
-        deviceName,
-      );
-
       // ハードウェアIDのアクティベーションをチェック・登録
       // 解除済み行が残っている場合は UNIQUE(license_id, hardware_id) のため再 insert せず再有効化する。
       const { data: activation } = await supabase
@@ -360,44 +350,5 @@ function getMajorFromAppVersion(appVersion?: string): string | null {
   if (!appVersion || typeof appVersion !== "string") return null;
   const m = appVersion.trim().match(/^(\d+)/);
   return m ? m[1] : null;
-}
-
-/** 旧 HWID から新 HWID へ同一端末のアクティベーションを移行 */
-async function tryMigrateHardwareId(
-  supabase: ReturnType<typeof createClient>,
-  licenseId: string,
-  hardwareId: string,
-  previousHardwareId?: string,
-  deviceName?: string,
-): Promise<void> {
-  if (!previousHardwareId || previousHardwareId === hardwareId) return;
-
-  const { data: prevActivation } = await supabase
-    .from("license_activations")
-    .select("id, device_name")
-    .eq("license_id", licenseId)
-    .eq("hardware_id", previousHardwareId)
-    .eq("is_active", true)
-    .maybeSingle();
-
-  if (!prevActivation) return;
-
-  const { data: existingNew } = await supabase
-    .from("license_activations")
-    .select("id")
-    .eq("license_id", licenseId)
-    .eq("hardware_id", hardwareId)
-    .maybeSingle();
-
-  if (existingNew) return;
-
-  await supabase
-    .from("license_activations")
-    .update({
-      hardware_id: hardwareId,
-      device_name: deviceName ?? prevActivation.device_name ?? null,
-      last_verification_date: new Date().toISOString(),
-    })
-    .eq("id", prevActivation.id);
 }
 

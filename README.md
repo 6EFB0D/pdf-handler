@@ -31,7 +31,7 @@
 
 | ファイル | 用途 |
 |----------|------|
-| `PdfHandler-<version>-prod-setup.exe` | **通常はこちら**（例: `PdfHandler-1.2.1-prod-setup.exe`） |
+| `PdfHandler-<version>-prod-setup.exe` | **通常はこちら**（例: `PdfHandler-1.1.3-prod-setup.exe`） |
 | `PdfHandler-<version>-prod-setup.zip` | setup.exe を ZIP にしたもの（EXE 直ダウンロードがブロックされる場合） |
 | `PdfHandler-<version>-prod-setup-checksum.txt` | setup.exe の SHA-256（任意） |
 
