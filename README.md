@@ -2,7 +2,7 @@
 
 [![GitHub release](https://img.shields.io/github/v/release/6EFB0D/pdf-handler?style=flat-square)](https://github.com/6EFB0D/pdf-handler/releases/latest)
 [![GitHub all releases](https://img.shields.io/github/downloads/6EFB0D/pdf-handler/total?style=flat-square&label=total%20downloads&cacheSeconds=3600)](https://github.com/6EFB0D/pdf-handler/releases)
-[![GitHub release downloads](https://img.shields.io/github/downloads/6EFB0D/pdf-handler/v1.2.6/total?style=flat-square&label=v1.2.6%20downloads&cacheSeconds=3600)](https://github.com/6EFB0D/pdf-handler/releases/tag/v1.2.6)
+[![GitHub release downloads](https://img.shields.io/github/downloads/6EFB0D/pdf-handler/v1.2.7/total?style=flat-square&label=v1.2.7%20downloads&cacheSeconds=3600)](https://github.com/6EFB0D/pdf-handler/releases/tag/v1.2.7)
 [![License](https://img.shields.io/github/license/6EFB0D/pdf-handler?style=flat-square)](LICENSE)
 
 **PDFハンドラ**は、ファイルサーバーやローカルフォルダ上の PDF を、Windows デスクトップから効率よく閲覧・整理・編集するためのアプリケーションです。
@@ -36,7 +36,7 @@
 
 | ファイル | 用途 |
 |----------|------|
-| `PdfHandler-<version>-prod-setup.exe` | **通常はこちら**（例: `PdfHandler-1.2.6-prod-setup.exe`） |
+| `PdfHandler-<version>-prod-setup.exe` | **通常はこちら**（例: `PdfHandler-1.2.7-prod-setup.exe`） |
 | `PdfHandler-<version>-prod-setup.zip` | setup.exe を ZIP にしたもの（EXE 直ダウンロードがブロックされる場合） |
 | `PdfHandler-<version>-prod-setup-checksum.txt` | setup.exe の SHA-256（任意） |
 
