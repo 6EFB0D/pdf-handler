@@ -10,7 +10,7 @@
 | | |
 |---|---|
 | **製品紹介・購入** | [LeafDesk 製品ページ](https://office-goplan.com/pdfhandler.html) |
-| **ダウンロード（おすすめ）** | [GitHub Releases（最新版）](https://github.com/6EFB0D/pdf-handler/releases/latest) — 現在 **v1.3.9**。ページ下部の **Assets** から取得 |
+| **ダウンロード** | [GitHub Releases（最新版）](https://github.com/6EFB0D/pdf-handler/releases/latest) — 現在 **v1.3.9**。ページ下部の **Assets** から取得 |
 | **お問い合わせ** | [Google フォーム](https://docs.google.com/forms/d/1NpXzk1kyUn2LhUzQhhMHq_tnT1oOGAsv561L-7nMfos/viewform) |
 
 ## できること
@@ -28,12 +28,12 @@
 
 ## ダウンロード（インストーラ）
 
-**通常利用は [最新版（latest）](https://github.com/6EFB0D/pdf-handler/releases/latest) から**取得してください（現在 **v1.3.9**）。  
-v1.3.10 / v1.3.11 は **prerelease**（確認・修正用）です。バッジの v1.3.11 は当該タグの DL 数表示であり、おすすめ版の案内ではありません。
+**通常利用は [最新版](https://github.com/6EFB0D/pdf-handler/releases/latest) から**取得してください（現在 **v1.3.9**）。  
+v1.3.10 / v1.3.11 は **prerelease** です。当面は **v1.3.9** をご利用ください。
 
 **重要**: インストーラは Releases 各ページの **一番下「Assets」** から取得してください。ページ上部の「Source code (zip)」はアプリではありません。
 
-1. [GitHub Releases（最新版）](https://github.com/6EFB0D/pdf-handler/releases/latest) を開く（prerelease を試す場合は該当タグのページ）
+1. [GitHub Releases（最新版）](https://github.com/6EFB0D/pdf-handler/releases/latest) を開く
 2. ページを **下までスクロール** し、「**Assets**」を展開
 3. 次のファイルから選ぶ:
 
