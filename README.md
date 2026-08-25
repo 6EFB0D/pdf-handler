@@ -9,8 +9,8 @@
 
 | | |
 |---|---|
-| **製品紹介・購入** | [LeafDesk 製品ページ](https://office-goplan.com/pdfhandler.html) |
-| **ダウンロード** | [GitHub Releases（最新版）](https://github.com/6EFB0D/pdf-handler/releases/latest) — 現在 **v1.3.9**。ページ下部の **Assets** から取得 |
+| **製品紹介・購入** | [LeafDesk 製品ページ](https://office-goplan.com/leafdesk) |
+| **ダウンロード** | [GitHub Releases（最新版）](https://github.com/6EFB0D/pdf-handler/releases/latest) — 現在 **v1.3.11**。ページ下部の **Assets** から取得 |
 | **お問い合わせ** | [Google フォーム](https://docs.google.com/forms/d/1NpXzk1kyUn2LhUzQhhMHq_tnT1oOGAsv561L-7nMfos/viewform) |
 
 ## できること
@@ -20,16 +20,15 @@
 | PDF プレビュー | フォルダを開き、一覧から PDF を選んで右ペインに表示 |
 | ファイル名変更 | プレビュー中でも F2 でリネーム（ファイルロックを回避） |
 | PDF 結合・分割 | 複数 PDF の結合、ページ指定での分割 |
-| ページ回転・編集 | プレビュー／サムネで表示中ページの回転、削除・挿入 |
-| フォルダツリー | 階層表示・ドラッグ＆ドロップでのコピー／移動 |
+| ページ回転・編集 | プレビュー／サムネで表示中ページの回転、削除・挿入。複数ページの選択・複製・並べ替えにも対応 |
+| フォルダツリー | 階層表示・ドラッグ＆ドロップでのコピー／移動。フォルダの作成・削除 |
 | ライセンス | 14 日間の試用のあと、アプリ内から買い切りライセンスを購入可能 |
 
-詳細は [製品ページ](https://office-goplan.com/pdfhandler.html) を参照してください。
+詳細は [製品ページ](https://office-goplan.com/leafdesk) を参照してください。
 
 ## ダウンロード（インストーラ）
 
-**通常利用は [最新版](https://github.com/6EFB0D/pdf-handler/releases/latest) から**取得してください（現在 **v1.3.9**）。  
-v1.3.10 / v1.3.11 は **prerelease** です。当面は **v1.3.9** をご利用ください。
+**最新版は [GitHub Releases](https://github.com/6EFB0D/pdf-handler/releases/latest) から**取得してください（現在 **v1.3.11**）。
 
 **重要**: インストーラは Releases 各ページの **一番下「Assets」** から取得してください。ページ上部の「Source code (zip)」はアプリではありません。
 
@@ -39,8 +38,8 @@ v1.3.10 / v1.3.11 は **prerelease** です。当面は **v1.3.9** をご利用�
 
 | ファイル | 用途 |
 |----------|------|
-| `LeafDesk-<version>-prod-setup.zip` | **推奨**（例: `LeafDesk-1.3.9-prod-setup.zip`）。展開して中の `setup.exe` を実行 |
-| `LeafDesk-<version>-prod-setup.exe` | 同じインストーラの直接配布（SmartScreen で開始が遅くなることがあります） |
+| `LeafDesk-<version>-prod-setup.zip` | ZIP を展開して中の `setup.exe` を実行（例: `LeafDesk-1.3.11-prod-setup.zip`） |
+| `LeafDesk-<version>-prod-setup.exe` | 同じインストーラの直接配布 |
 | `LeafDesk-<version>-prod-setup-checksum.txt` | setup.exe の SHA-256（任意） |
 
 4. **zip を展開した `setup.exe`**（または exe を直接）を実行
@@ -61,7 +60,7 @@ v1.3.10 / v1.3.11 は **prerelease** です。当面は **v1.3.9** をご利用�
 
 ## ライセンス・試用
 
-- **Standard 版（買い切り）**: ¥4,980（税込）— [製品ページ](https://office-goplan.com/pdfhandler.html)
+- **Standard 版（買い切り）**: ¥4,980（税込）— [製品ページ](https://office-goplan.com/leafdesk)
 - **試用期間**: 初回起動から 14 日間
 - **販売対象**: 有償ライセンスの直接販売は **日本国内** の個人・法人向けです。国外への直接販売は行いません。
 
