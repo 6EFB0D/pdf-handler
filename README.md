@@ -2,7 +2,7 @@
 
 [![GitHub release](https://img.shields.io/github/v/release/6EFB0D/pdf-handler?style=flat-square)](https://github.com/6EFB0D/pdf-handler/releases/latest)
 [![GitHub all releases](https://img.shields.io/github/downloads/6EFB0D/pdf-handler/total?style=flat-square&label=total%20downloads&cacheSeconds=3600)](https://github.com/6EFB0D/pdf-handler/releases)
-[![GitHub release downloads](https://img.shields.io/github/downloads/6EFB0D/pdf-handler/v1.3.11/total?style=flat-square&label=v1.3.11%20downloads&cacheSeconds=3600)](https://github.com/6EFB0D/pdf-handler/releases/tag/v1.3.11)
+[![GitHub release downloads](https://img.shields.io/github/downloads/6EFB0D/pdf-handler/v1.3.12/total?style=flat-square&label=v1.3.12%20downloads&cacheSeconds=3600)](https://github.com/6EFB0D/pdf-handler/releases/tag/v1.3.12)
 [![License](https://img.shields.io/github/license/6EFB0D/pdf-handler?style=flat-square)](LICENSE)
 
 **LeafDesk**（旧称 pdfHandler / PDFハンドラ）は、ファイルサーバーやローカルフォルダ上の PDF を、Windows デスクトップから効率よく閲覧・整理・編集するためのアプリケーションです。
@@ -10,7 +10,7 @@
 | | |
 |---|---|
 | **製品紹介・購入** | [LeafDesk 製品ページ](https://office-goplan.com/leafdesk) |
-| **ダウンロード** | [GitHub Releases（最新版）](https://github.com/6EFB0D/pdf-handler/releases/latest) — 現在 **v1.3.11**。ページ下部の **Assets** から取得 |
+| **ダウンロード** | [GitHub Releases（最新版）](https://github.com/6EFB0D/pdf-handler/releases/latest) — 現在 **v1.3.11**。ページ下部の **Assets** から取得。安定化パッチ **[v1.3.12](https://github.com/6EFB0D/pdf-handler/releases/tag/v1.3.12)** あり（まだ Latest ではありません） |
 | **お問い合わせ** | [Google フォーム](https://docs.google.com/forms/d/1NpXzk1kyUn2LhUzQhhMHq_tnT1oOGAsv561L-7nMfos/viewform) |
 
 ## できること
@@ -28,7 +28,9 @@
 
 ## ダウンロード（インストーラ）
 
-**最新版は [GitHub Releases](https://github.com/6EFB0D/pdf-handler/releases/latest) から**取得してください（現在 **v1.3.11**）。
+**最新版（Latest）は [GitHub Releases](https://github.com/6EFB0D/pdf-handler/releases/latest) から**取得してください（現在 **v1.3.11**）。
+
+安定化パッチ **v1.3.12**（ヘッダ／フッタで本文が消えない、フォルダの名前変更、並べ替えの破棄）は [Releases の v1.3.12](https://github.com/6EFB0D/pdf-handler/releases/tag/v1.3.12) にあります。まだ Latest ではありません。
 
 **重要**: インストーラは Releases 各ページの **一番下「Assets」** から取得してください。ページ上部の「Source code (zip)」はアプリではありません。
 
