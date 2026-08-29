@@ -10,7 +10,7 @@
 | | |
 |---|---|
 | **製品紹介・購入** | [LeafDesk 製品ページ](https://office-goplan.com/leafdesk) |
-| **ダウンロード** | [GitHub Releases（最新版）](https://github.com/6EFB0D/pdf-handler/releases/latest) — 現在 **v1.3.11**。ページ下部の **Assets** から取得。安定化パッチ **[v1.3.12](https://github.com/6EFB0D/pdf-handler/releases/tag/v1.3.12)** あり（まだ Latest ではありません） |
+| **ダウンロード** | [GitHub Releases（最新版）](https://github.com/6EFB0D/pdf-handler/releases/latest) — 現在 **v1.3.12**。ページ下部の **Assets** から取得 |
 | **お問い合わせ** | [Google フォーム](https://docs.google.com/forms/d/1NpXzk1kyUn2LhUzQhhMHq_tnT1oOGAsv561L-7nMfos/viewform) |
 
 ## できること
@@ -21,16 +21,16 @@
 | ファイル名変更 | プレビュー中でも F2 でリネーム（ファイルロックを回避） |
 | PDF 結合・分割 | 複数 PDF の結合、ページ指定での分割 |
 | ページ回転・編集 | プレビュー／サムネで表示中ページの回転、削除・挿入。複数ページの選択・複製・並べ替えにも対応 |
-| フォルダツリー | 階層表示・ドラッグ＆ドロップでのコピー／移動。フォルダの作成・削除 |
+| ヘッダ／フッタ | 文書に付け外しできる。本文・図面を消さない |
+| フォルダツリー | 階層表示・ドラッグ＆ドロップでのコピー／移動。フォルダの作成・削除・名前変更 |
+| 並べ替えの破棄 | ページ順を変えたあと、保存せず元に戻せる |
 | ライセンス | 14 日間の試用のあと、アプリ内から買い切りライセンスを購入可能 |
 
 詳細は [製品ページ](https://office-goplan.com/leafdesk) を参照してください。
 
 ## ダウンロード（インストーラ）
 
-**最新版（Latest）は [GitHub Releases](https://github.com/6EFB0D/pdf-handler/releases/latest) から**取得してください（現在 **v1.3.11**）。
-
-安定化パッチ **v1.3.12**（ヘッダ／フッタで本文が消えない、フォルダの名前変更、並べ替えの破棄）は [Releases の v1.3.12](https://github.com/6EFB0D/pdf-handler/releases/tag/v1.3.12) にあります。まだ Latest ではありません。
+**最新版（Latest）は [GitHub Releases](https://github.com/6EFB0D/pdf-handler/releases/latest) から**取得してください（現在 **v1.3.12**）。
 
 **重要**: インストーラは Releases 各ページの **一番下「Assets」** から取得してください。ページ上部の「Source code (zip)」はアプリではありません。
 
@@ -40,7 +40,7 @@
 
 | ファイル | 用途 |
 |----------|------|
-| `LeafDesk-<version>-prod-setup.zip` | ZIP を展開して中の `setup.exe` を実行（例: `LeafDesk-1.3.11-prod-setup.zip`） |
+| `LeafDesk-<version>-prod-setup.zip` | ZIP を展開して中の `setup.exe` を実行（例: `LeafDesk-1.3.12-prod-setup.zip`） |
 | `LeafDesk-<version>-prod-setup.exe` | 同じインストーラの直接配布 |
 | `LeafDesk-<version>-prod-setup-checksum.txt` | setup.exe の SHA-256（任意） |
 
