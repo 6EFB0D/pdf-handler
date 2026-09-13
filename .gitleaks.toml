@@ -1,7 +1,12 @@
-# Secret scanning for the pdf-handler distribution repository.
+# Secret scanning for the pdf-handler distribution repository (OPS-10 minimal Public).
 # Blocks API keys, tokens, and other credentials from being committed.
+# NOTE (2026-09-06 Q-2): empty `paths = []` breaks gitleaks 8.30
+# ("[[allowlists]] must contain at least one check"). Public has no path exceptions;
+# use a stopword placeholder so the config validates. Do NOT add production secrets.
 
 title = "pdf-handler"
 
 [allowlist]
-paths = []
+stopwords = [
+  "pdf-handler-public-no-path-allowlist",
+]
