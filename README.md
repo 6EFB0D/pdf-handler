@@ -10,7 +10,7 @@
 | | |
 |---|---|
 | **製品紹介・購入** | [LeafDesk 製品ページ](https://office-goplan.com/leafdesk) |
-| **ダウンロード** | [GitHub Releases（最新版）](https://github.com/6EFB0D/pdf-handler/releases/latest) — 現在 **v1.3.13**。ページ下部の **Assets** から取得 |
+| **ダウンロード** | [GitHub Releases（最新版）](https://github.com/6EFB0D/pdf-handler/releases/latest) — 現在 **v1.4.17**。ページ下部の **Assets** から取得 |
 | **お問い合わせ** | [Google フォーム](https://docs.google.com/forms/d/1NpXzk1kyUn2LhUzQhhMHq_tnT1oOGAsv561L-7nMfos/viewform) |
 
 ## できること
@@ -20,6 +20,7 @@
 | PDF プレビュー | フォルダを開き、一覧から PDF を選んで右ペインに表示 |
 | ファイル名変更 | プレビュー中でも F2 でリネーム（ファイルロックを回避） |
 | PDF 結合・分割 | 複数 PDF の結合、ページ指定での分割 |
+| N-up（面付け） | 複数ページを 1 枚にまとめる（2／4／6／9-in-1、用紙 A4／A3、縦／横）。配置はセルに合わせて回転、または原稿の向きのまま縮小 |
 | ページ回転・編集 | プレビュー／サムネで表示中ページの回転、削除・挿入。複数ページの選択・複製・並べ替えにも対応 |
 | ヘッダ／フッタ | 文書に付け外しできる。本文・図面を消さない |
 | フォルダツリー | 階層表示・ドラッグ＆ドロップでのコピー／移動。フォルダの作成・削除・名前変更 |
@@ -30,7 +31,7 @@
 
 ## ダウンロード（インストーラ）
 
-**最新版（Latest）は [GitHub Releases](https://github.com/6EFB0D/pdf-handler/releases/latest) から**取得してください（現在 **v1.3.13**）。
+**最新版（Latest）は [GitHub Releases](https://github.com/6EFB0D/pdf-handler/releases/latest) から**取得してください（現在 **v1.4.17**）。
 
 **重要**: インストーラは Releases 各ページの **一番下「Assets」** から取得してください。ページ上部の「Source code (zip)」はアプリではありません。
 
@@ -40,7 +41,7 @@
 
 | ファイル | 用途 |
 |----------|------|
-| `LeafDesk-<version>-prod-setup.zip` | ZIP を展開して中の `setup.exe` を実行（例: `LeafDesk-1.3.13-prod-setup.zip`） |
+| `LeafDesk-<version>-prod-setup.zip` | ZIP を展開して中の `setup.exe` を実行（例: `LeafDesk-1.4.17-prod-setup.zip`） |
 | `LeafDesk-<version>-prod-setup.exe` | 同じインストーラの直接配布 |
 | `LeafDesk-<version>-prod-setup-checksum.txt` | setup.exe の SHA-256（任意） |
 
