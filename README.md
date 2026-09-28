@@ -10,7 +10,7 @@
 | | |
 |---|---|
 | **製品紹介・購入** | [LeafDesk 製品ページ](https://office-goplan.com/leafdesk) |
-| **ダウンロード** | [GitHub Releases](https://github.com/6EFB0D/pdf-handler/releases) — **Latest は当面 v1.3.13**。**v1.4.19** は prerelease（Assets から取得）。ページ下部の **Assets** から取得 |
+| **ダウンロード** | [GitHub Releases](https://github.com/6EFB0D/pdf-handler/releases/latest) — **Latest = v1.4.19**（N-up 正式含む）。ページ下部の **Assets** から取得 |
 | **お問い合わせ** | [Google フォーム](https://docs.google.com/forms/d/1NpXzk1kyUn2LhUzQhhMHq_tnT1oOGAsv561L-7nMfos/viewform) |
 
 ## できること
@@ -31,8 +31,8 @@
 
 ## ダウンロード（インストーラ）
 
-**Latest（`releases/latest`）は当面 [v1.3.13](https://github.com/6EFB0D/pdf-handler/releases/latest) です。**  
-**v1.4.19** は [prerelease](https://github.com/6EFB0D/pdf-handler/releases/tag/v1.4.19) として Assets から取得できます。
+**Latest（`releases/latest`）は [v1.4.19](https://github.com/6EFB0D/pdf-handler/releases/latest) です**（N-up 正式含む）。  
+v1.4.17 は先行版のため、新規導入は **v1.4.19** を推奨します。
 
 **重要**: インストーラは Releases 各ページの **一番下「Assets」** から取得してください。ページ上部の「Source code (zip)」はアプリではありません。
 
