@@ -2,7 +2,7 @@
 
 [![GitHub release](https://img.shields.io/github/v/release/6EFB0D/pdf-handler?style=flat-square)](https://github.com/6EFB0D/pdf-handler/releases/latest)
 [![GitHub all releases](https://img.shields.io/github/downloads/6EFB0D/pdf-handler/total?style=flat-square&label=total%20downloads&cacheSeconds=3600)](https://github.com/6EFB0D/pdf-handler/releases)
-[![GitHub release downloads](https://img.shields.io/github/downloads/6EFB0D/pdf-handler/v1.4.17/total?style=flat-square&label=v1.4.17%20downloads&cacheSeconds=3600)](https://github.com/6EFB0D/pdf-handler/releases/tag/v1.4.17)
+[![GitHub release downloads](https://img.shields.io/github/downloads/6EFB0D/pdf-handler/v1.4.19/total?style=flat-square&label=v1.4.19%20downloads&cacheSeconds=3600)](https://github.com/6EFB0D/pdf-handler/releases/tag/v1.4.19)
 [![License](https://img.shields.io/github/license/6EFB0D/pdf-handler?style=flat-square)](LICENSE)
 
 **LeafDesk**（旧称 pdfHandler / PDFハンドラ）は、ファイルサーバーやローカルフォルダ上の PDF を、Windows デスクトップから効率よく閲覧・整理・編集するためのアプリケーションです。
@@ -10,7 +10,7 @@
 | | |
 |---|---|
 | **製品紹介・購入** | [LeafDesk 製品ページ](https://office-goplan.com/leafdesk) |
-| **ダウンロード** | [GitHub Releases（最新版）](https://github.com/6EFB0D/pdf-handler/releases/latest) — 現在 **v1.4.17**。ページ下部の **Assets** から取得 |
+| **ダウンロード** | [GitHub Releases](https://github.com/6EFB0D/pdf-handler/releases) — **Latest は当面 v1.3.13**。**v1.4.19** は prerelease（Assets から取得）。ページ下部の **Assets** から取得 |
 | **お問い合わせ** | [Google フォーム](https://docs.google.com/forms/d/1NpXzk1kyUn2LhUzQhhMHq_tnT1oOGAsv561L-7nMfos/viewform) |
 
 ## できること
@@ -31,17 +31,18 @@
 
 ## ダウンロード（インストーラ）
 
-**最新版（Latest）は [GitHub Releases](https://github.com/6EFB0D/pdf-handler/releases/latest) から**取得してください（現在 **v1.4.17**）。
+**Latest（`releases/latest`）は当面 [v1.3.13](https://github.com/6EFB0D/pdf-handler/releases/latest) です。**  
+**v1.4.19** は [prerelease](https://github.com/6EFB0D/pdf-handler/releases/tag/v1.4.19) として Assets から取得できます。
 
 **重要**: インストーラは Releases 各ページの **一番下「Assets」** から取得してください。ページ上部の「Source code (zip)」はアプリではありません。
 
-1. [GitHub Releases（最新版）](https://github.com/6EFB0D/pdf-handler/releases/latest) を開く
+1. [GitHub Releases](https://github.com/6EFB0D/pdf-handler/releases) を開く
 2. ページを **下までスクロール** し、「**Assets**」を展開
 3. 次のファイルから選ぶ:
 
 | ファイル | 用途 |
 |----------|------|
-| `LeafDesk-<version>-prod-setup.zip` | ZIP を展開して中の `setup.exe` を実行（例: `LeafDesk-1.4.17-prod-setup.zip`） |
+| `LeafDesk-<version>-prod-setup.zip` | ZIP を展開して中の `setup.exe` を実行（例: `LeafDesk-1.4.19-prod-setup.zip`。取説 .txt 同梱） |
 | `LeafDesk-<version>-prod-setup.exe` | 同じインストーラの直接配布 |
 | `LeafDesk-<version>-prod-setup-checksum.txt` | setup.exe の SHA-256（任意） |
 
